@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.12", "3.13", "3.14"]
+    defaults:
+      run:
+        working-directory: nestor-satellite-python
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: nestor-satellite-python
+      # The server, a dev-only dependency at ../nestor: its conformance suite and its schemas.
+      - uses: actions/checkout@v7
+        with:
+          repository: nestor-home/nestor
+          path: nestor
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - run: uv sync --locked --all-extras
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run ty check
+      - run: uv run pytest

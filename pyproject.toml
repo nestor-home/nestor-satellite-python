@@ -1,0 +1,84 @@
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14"]
+build-backend = "uv_build"
+
+[project]
+name = "nestor-satellite"
+version = "0.0.1"
+description = "Python SDK to write Nestor satellite drivers: pairing, WebRTC audio and the nestor data channel."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Mathis Lambert" }]
+requires-python = ">=3.12"
+dependencies = [
+    "aiortc>=1.15",
+    "httpx>=0.28.1",
+]
+keywords = ["nestor", "satellite", "voice assistant", "webrtc", "robotics"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Home Automation",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+# The machine's microphone and speaker (PortAudio). Without it, plug your own AudioSource/AudioSink.
+sounddevice = ["sounddevice>=0.5.2"]
+
+[project.scripts]
+nestor-satellite = "nestor_satellite.cli:main"
+
+[project.urls]
+Homepage = "https://nestor.mathislambert.fr"
+Source = "https://github.com/nestor-home/nestor-satellite-python"
+Issues = "https://github.com/nestor-home/nestor-satellite-python/issues"
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.1",
+    "pytest-cov==7.1.0",
+    "ruff==0.17.3",
+    "ty==0.0.94",
+    "pre-commit==4.7.0",
+    "jsonschema>=4.26.0",
+    # The server, for its black-box conformance suite and its schemas. Tests only: the SDK never imports it.
+    "nestor-home[voice]",
+]
+
+[tool.uv.sources]
+nestor-home = { path = "../nestor", editable = true }
+
+[tool.uv.build-backend]
+module-name = "nestor_satellite"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = ["--import-mode=importlib", "--cov=nestor_satellite", "--cov-report=term-missing:skip-covered"]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+fail_under = 95
+exclude_also = ["raise NotImplementedError", "\\.\\.\\.$"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.rules]
+possibly-unresolved-reference = "error"
