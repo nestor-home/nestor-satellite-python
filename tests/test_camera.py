@@ -1,10 +1,14 @@
 """Reading the QR code of a pairing URI from camera frames (`enrollment.qr`)."""
 
 import sys
+from collections.abc import Iterator
+from types import SimpleNamespace
+from typing import Any
 
+import av
 import pytest
 
-from nestor_satellite import AvCamera, Frame, read_qr
+from nestor_satellite import AvCamera, Frame, camera, read_qr
 
 from .qr import blank, qr_frame, y4m
 
@@ -45,3 +49,31 @@ async def test_a_camera_stream_is_read_frame_by_frame_until_it_ends(tmp_path) ->
     finally:
         await camera.close()
         await camera.close()
+
+
+class LiveCamera:
+    """What FFmpeg gives for a live camera: no image yet, then a packet without one, then an image."""
+
+    def __init__(self) -> None:
+        image = av.VideoFrame(8, 2, "gray")
+        image.planes[0].update(bytes(range(16)) + bytes(image.planes[0].buffer_size - 16))
+        self.answers: list[Any] = [BlockingIOError(), SimpleNamespace(size=3, decode=lambda: []),
+                                   SimpleNamespace(size=3, decode=lambda: [image])]  # fmt: skip
+        self.streams = SimpleNamespace(video=["video"])
+
+    def demux(self, _stream: object) -> Iterator[Any]:
+        answer = self.answers.pop(0)
+        if isinstance(answer, Exception):
+            raise answer
+        yield answer
+
+    def close(self) -> None: ...
+
+
+async def test_a_live_camera_is_waited_for_until_it_has_an_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(camera.av, "open", lambda *_args, **_options: LiveCamera())
+    lens = AvCamera("0", format="avfoundation")
+    await lens.start()
+    frame = await lens.read()
+    assert (frame.width, frame.height) == (8, 2)
+    assert frame.gray[:8] == bytes(range(8)), "rows without the padding FFmpeg aligns them with"

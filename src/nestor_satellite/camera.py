@@ -7,8 +7,9 @@ macOS, V4L2 on Linux) through PyAV, already a dependency of the WebRTC stack.
 """
 
 import asyncio
+import time
 from abc import ABC, abstractmethod
-from collections.abc import Iterator, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -61,25 +62,31 @@ class AvCamera(Camera):
     def __init__(self, device: str, *, format: str | None = None, options: Mapping[str, str] | None = None) -> None:
         self._device, self._format, self._options = device, format, dict(options or {})
         self._container: Any = None
-        self._frames: Iterator[Any] | None = None
 
     async def start(self) -> None:
         def opened() -> Any:
             return av.open(self._device, format=self._format, options=self._options)
 
         self._container = await asyncio.to_thread(opened)
-        self._frames = self._container.decode(video=0)
 
     async def read(self) -> Frame:
-        if self._frames is None:
+        if self._container is None:
             raise RuntimeError("the camera is not started")
-        frames = self._frames
+        container = self._container
+        video = container.streams.video[0]
 
         def grey() -> Frame:
-            try:
-                image = next(frames).reformat(format="gray")
-            except StopIteration:  # a future cannot carry it
-                raise EOFError("the camera stopped") from None
+            while True:
+                try:  # a fresh iterator each time: one that raised is spent
+                    packet = next(container.demux(video))
+                except BlockingIOError:  # a live camera has no new image yet
+                    time.sleep(0.005)
+                    continue
+                if packet.size == 0:  # the end of a recorded stream
+                    raise EOFError("the camera stopped")
+                if images := packet.decode():
+                    break
+            image = images[-1].reformat(format="gray")
             plane, width = image.planes[0], image.width
             rows = bytes(plane)
             gray = b"".join(rows[y * plane.line_size : y * plane.line_size + width] for y in range(image.height))
@@ -90,4 +97,4 @@ class AvCamera(Camera):
     async def close(self) -> None:
         if self._container is not None:
             self._container.close()
-            self._container = self._frames = None
+            self._container = None
