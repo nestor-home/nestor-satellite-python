@@ -2,6 +2,7 @@
 answers the real one cannot be led to give."""
 
 import asyncio
+import contextlib
 import json
 import logging
 import re
@@ -24,10 +25,25 @@ from nestor.modules.satellites import Pairing as Service
 from nestor.modules.satellites import PairingMethod as ServerMethod
 from nestor.testing.journal import MemoryEventLog
 
-from nestor_satellite import IDENTIFY, Device, Display, EnrollmentOutcome, Manifest, PairingFailed, TokenStore
+from nestor_satellite import (
+    IDENTIFY,
+    Camera,
+    Device,
+    Display,
+    EnrollmentOutcome,
+    Frame,
+    Manifest,
+    PairingFailed,
+    RecordingSink,
+    Satellite,
+    TokenStore,
+)
 from nestor_satellite.i18n import Messages
-from nestor_satellite.pairing import Pairing
+from nestor_satellite.pairing import Pairing, code_hash
 from nestor_satellite.protocol import PairingMethod
+from nestor_satellite.speech import SpokenCode
+
+from .qr import blank, qr_frame
 
 CORE = "http://nestor.local:7860"
 DEVICE = Device("enceinte-salon", "raspberry-pi-4", "salon")
@@ -158,7 +174,7 @@ async def test_the_device_code_is_shown_and_said_twice_digit_by_digit_and_put_aw
     [(text, code)] = screen.shown
     assert code is not None and text == "Saisissez ce code dans Nestor pour appairer cet appareil."
     digits = ", ".join(code)
-    assert said == [f"Mon code d'appairage est {digits}. Je répète : {digits}."]
+    assert said == [f"Code d'appairage : {digits}. Je répète : {digits}."]
 
     await core.type_device_code(code)
     await running
@@ -488,3 +504,122 @@ async def test_a_code_the_core_did_not_take_with_the_request_is_offered_again_wh
 
     assert await run(httpx.MockTransport(core), pairing(enrollment="K7QF2M9X")) == "t"
     assert sent == ["/satellites/pairings", "/satellites/pairings/p1/enrollment"]
+
+
+async def test_the_spoken_code_stops_as_soon_as_the_device_is_paired(
+    core: Core, caplog: pytest.LogCaptureFixture
+) -> None:
+    sink = RecordingSink(16_000)
+    voice = SpokenCode(sink, Messages("en"))
+    device = pairing(speech=voice, methods=(PairingMethod.SPEECH, PairingMethod.PROVISIONING))
+    running = asyncio.create_task(device.pair(core.http))
+    await until(lambda: len(sink.played) > 16_000)  # half a second in
+    await core.type_device_code(caplog.text.split("Pairing code ")[1][:6])
+    await running
+    played = len(sink.played)
+    await asyncio.sleep(0.3)
+
+    assert len(sink.played) == played, "silent once paired"
+    assert not voice.speaking
+    assert played / 2 / 16_000 < 3, "well before the end of the announcement"
+
+
+async def test_a_pairing_stopped_while_the_code_is_said_hushes_it(core: Core) -> None:
+    voice = SpokenCode(RecordingSink(16_000), Messages("en"))
+    running = asyncio.create_task(pairing(speech=voice).pair(core.http))
+    await until(lambda: voice.speaking)
+    running.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await running
+    assert not voice.speaking
+
+
+def test_refused_codes_are_kept_as_hashes_and_outlive_the_token(tmp_path: Path) -> None:
+    store = TokenStore(tmp_path / "state.json")
+    store.refuse(CORE, "enceinte-salon", "K7QF2M9X", "expired")
+    store.save(CORE, "enceinte-salon", "nst2_secret")
+    store.forget()
+
+    assert store.load(CORE, "enceinte-salon") is None
+    assert store.refused(CORE, "enceinte-salon") == {code_hash("K7QF2M9X"): "expired"}
+    assert store.refused(CORE, "reachy-salon") == {}, "another device's state"
+    assert "K7QF2M9X" not in store.path.read_text()
+    assert stat.S_IMODE(store.path.stat().st_mode) == 0o600
+
+
+async def test_a_restarted_device_never_sends_a_refused_code_again(
+    core: Core, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    store = TokenStore(tmp_path / "state.json")
+
+    def started(screen: Screen) -> Pairing:  # what a Satellite gives its pairing, with this state file
+        return pairing(enrollment="K7QF2M9X", display=screen, refused=store.refused(CORE, DEVICE.id),
+                       on_refused=lambda code, reason: store.refuse(CORE, DEVICE.id, code, reason),
+                       methods=(PairingMethod.DISPLAY, PairingMethod.PROVISIONING))  # fmt: skip
+
+    for _run in range(2):  # the second time, as after a restart with the same NESTOR_PAIRING_URI
+        screen = Screen()
+        running = asyncio.create_task(started(screen).pair(core.http))
+        await until(lambda: screen.shown)  # noqa: B023
+        await core.type_device_code(screen.shown[0][1] or "")
+        await running
+        assert screen.shown[0][0].startswith("This enrollment code is not valid."), "said on its outputs"
+
+    assert core.codes_sent() == ["K7QF2M9X"]
+
+
+class Shown(Camera):
+    """A camera looking at a QR code, after a few frames of nothing."""
+
+    def __init__(self, text: str) -> None:
+        self.frames = [blank(), qr_frame("not a pairing URI"), qr_frame(text)]
+        self.opened = self.closed = 0
+
+    async def start(self) -> None:
+        self.opened += 1
+
+    async def read(self) -> Frame:
+        return self.frames.pop(0) if len(self.frames) > 1 else self.frames[0]
+
+    async def close(self) -> None:
+        self.closed += 1
+
+
+async def test_a_satellite_shown_the_qr_code_of_a_pairing_uri_pairs_with_it(core: Core, tmp_path: Path) -> None:
+    code = await core.code(ServerMethod.QR)
+    camera = Shown(f"nestor+http://nestor.local:7860/?code={code}")
+    device = Satellite(CORE, MANIFEST, tokens=TokenStore(tmp_path / "t.json"), camera=camera, environ={},
+                       transport=core, poll_s=0.02)  # fmt: skip
+    assert PairingMethod.QR in device.manifest.pairing_methods
+    running = asyncio.create_task(device.run())
+    await until(lambda: device.tokens.load(CORE, DEVICE.id))
+    running.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await running
+
+    assert [body.get("method") for _path, body in core.sent if "enrollment_code" in body] == ["enrollment.qr"]
+    assert (camera.opened, camera.closed) == (1, 1), "the camera is on while pairing only"
+
+
+class Broken(Camera):
+    async def start(self) -> None:
+        raise OSError("no camera")
+
+    async def read(self) -> Frame:
+        raise AssertionError("never read")
+
+
+async def test_a_camera_that_does_not_open_leaves_the_other_ways_to_pair(
+    core: Core, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    screen = Screen()
+    device = Satellite(CORE, MANIFEST, tokens=TokenStore(tmp_path / "t.json"), camera=Broken(), display=screen,
+                       environ={}, transport=core, poll_s=0.02, locale="fr")  # fmt: skip
+    running = asyncio.create_task(device.run())
+    await until(lambda: screen.shown)
+    await core.type_device_code(screen.shown[0][1] or "")
+    await until(lambda: device.tokens.load(CORE, DEVICE.id))
+    running.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await running
+    assert "La caméra est indisponible (no camera) : appairez cet appareil autrement." in caplog.text

@@ -3,9 +3,10 @@
     nestor-satellite run --core http://nestor.local:7860 --room salon
     nestor-satellite run --pairing-uri "nestor+http://nestor.local:7860/?code=K7QF2M9X" --room salon
 
-Useful on a Raspberry Pi with a USB speakerphone. It has no screen and no voice of its own: give it
-the pairing URI of an enrollment code made in Nestor (flag, or `NESTOR_PAIRING_URI`), or type the
-pairing code it logs in Nestor. The token is then kept in `~/.config/nestor-satellite/<id>.json`.
+Useful on a Raspberry Pi with a USB speakerphone. Give it the pairing URI of an enrollment code made
+in Nestor (flag, or `NESTOR_PAIRING_URI`), or type in Nestor the pairing code it says on its speaker
+(and logs); with `--camera`, show it the QR code of a pairing URI. The token is then kept in
+`~/.config/nestor-satellite/<id>.json`.
 """
 
 import argparse
@@ -16,6 +17,7 @@ import re
 import socket
 import sys
 from collections.abc import Sequence
+from typing import Any
 
 from nestor_satellite.client import Satellite
 from nestor_satellite.codes import InvalidEnrollment
@@ -45,6 +47,10 @@ def parse(argv: Sequence[str] | None = None) -> argparse.Namespace:
     run.add_argument("--token-file", help="where the token is kept (default: ~/.config/nestor-satellite/<id>.json)")
     run.add_argument("--input-device", help="PortAudio input device (name or index)")
     run.add_argument("--output-device", help="PortAudio output device (name or index)")
+    run.add_argument(
+        "--camera",
+        help="read QR codes of pairing URIs from this camera (FFmpeg device: 0 on macOS, /dev/video0 on Linux)",
+    )
     run.add_argument("-v", "--verbose", action="store_true")
     return parser.parse_args(argv)
 
@@ -62,7 +68,18 @@ def build(args: argparse.Namespace) -> Satellite:
         locale=args.lang,
         source=Microphone(device=_device(args.input_device)),
         sink=Speaker(device=_device(args.output_device)),
+        camera=_camera(args.camera),
     )
+
+
+def _camera(device: str | None) -> Any:
+    if device is None:
+        return None
+    from nestor_satellite.camera import AvCamera
+
+    if sys.platform == "darwin":  # AVFoundation delivers what the camera offers, at its own rate
+        return AvCamera(device, format="avfoundation", options={"framerate": "30", "video_size": "1280x720"})
+    return AvCamera(device, format="v4l2")
 
 
 def _device(value: str | None) -> int | str | None:

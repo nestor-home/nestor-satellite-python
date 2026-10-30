@@ -4,8 +4,9 @@
 device-code-shown = Saisissez ce code dans Nestor pour appairer cet appareil.
 # Le code de l'appareil, dans le journal.
 device-code-logged = Code d'appairage { $code } : saisissez-le dans Nestor pour appairer cet appareil.
-# Le code de l'appareil, à voix haute : $digits sont lus un par un.
-device-code-spoken = Mon code d'appairage est { $digits }. Je répète : { $digits }.
+# Le code de l'appareil, à voix haute : $digits sont lus un par un. La voix fournie joue un extrait
+# enregistré pour chaque texte entre les chiffres (scripts/voice.py) : le relancer après une modification.
+device-code-spoken = Code d'appairage : { $digits }. Je répète : { $digits }.
 # Un appareil sans écran ni voix.
 device-code-headless = Cet appareil n'a ni écran ni voix : pour l'appairer, ajoutez-le dans Nestor avec un code d'enrôlement et renseignez NESTOR_PAIRING_URI.
 device-code-expired = Le code d'appairage a expiré : demande d'un nouveau code.
@@ -20,6 +21,7 @@ enrollment-invalid = Ce n'est pas un code d'enrôlement.
 enrollment-misconfigured = { $source } n'est ni un URI d'appairage ni un code d'enrôlement.
 enrollment-not-pending = Cet appareil était déjà appairé avec son code : le code d'enrôlement n'a pas servi.
 enrollment-accepted = Code d'enrôlement accepté.
+camera-failed = La caméra est indisponible ({ $error }) : appairez cet appareil autrement.
 
 paired = Appairé avec Nestor.
 pairing-rate-limited = Trop de tentatives : nouvel essai dans { $seconds } s.

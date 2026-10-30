@@ -25,8 +25,33 @@ nestor-satellite run --room salon --pairing-uri "nestor+http://nestor.local:7860
 nestor-satellite run --core http://nestor.local:7860 --room salon --pairing-code K7QF-2M9X
 ```
 
-Without one, it logs its device code and says that an enrollment code is the way to pair it. The
-token is kept in `~/.config/nestor-satellite/<id>.json` (mode 600); later runs reconnect with it.
+Without one, it asks for a device code and says it aloud on its speaker, digit by digit, twice (and
+logs it). The token is kept in `~/.config/nestor-satellite/<id>.json` (mode 600); later runs
+reconnect with it. Enrollment codes the core refused are kept there too, as hashes, so a restart
+never presents one again.
+
+### The SDK's own voice
+
+A device with a speaker (a `sink`, `AUDIO_PLAYBACK` declared) and no screen says its device code
+with recorded clips shipped in the package: offline, no speech engine, in English or French (other
+languages are said in English). It declares `device_code.speech` by itself; a `voice=` callback
+replaces it. The clips (`src/nestor_satellite/voice/`, 16 kHz mono WAV, about 500 KB) were recorded
+once with Kokoro-82M by `scripts/voice.py` and are shared under CC BY 4.0 (see `voice/LICENSE`);
+the TypeScript and Rust SDKs ship the same files. `scripts/voice_bench.py` measures them: Whisper
+hears 20 codes out of 20 in English and 18 out of 20 in French.
+
+### QR codes
+
+Given a `camera`, a satellite declares `enrollment.qr`, turns the camera on while it waits to be
+paired, and pairs with the QR code of a pairing URI shown to it (made in the admin):
+
+```bash
+pip install "nestor-satellite[sounddevice,qr]"
+nestor-satellite run --core http://nestor.local:7860 --room salon --camera 0   # macOS: the first camera
+```
+
+`AvCamera` reads any camera FFmpeg knows (`AvCamera("0", format="avfoundation")` on macOS,
+`AvCamera("/dev/video0", format="v4l2")` on Linux); ZXing-C++ reads the codes (`qr` extra).
 
 ## Writing a driver
 
@@ -71,8 +96,9 @@ satellite = Satellite(
     source=Microphone(),
     sink=Speaker(),
     display=Screen(),  # shows the device code: declares device_code.display
-    voice=say,  # says it, digit by digit, twice: declares device_code.speech
+    voice=say,  # says it, digit by digit, twice: declares device_code.speech (default: the SDK's clips)
     enrolls_by=[PairingMethod.INPUT],  # a code can be typed on it: see `enroll` below
+    camera=None,  # an AvCamera reads QR codes: declares enrollment.qr
     locale="fr",  # what it says to people, in English or French (default: the environment's language)
 )
 asyncio.run(satellite.run())  # pairs the first time, then stays connected and reconnects
@@ -80,13 +106,11 @@ asyncio.run(satellite.run())  # pairs the first time, then stays connected and r
 
 - **Pairing methods** are not declared by hand: the manifest lists `enrollment.provisioning` always,
   and `device_code.display`, `device_code.speech`, `enrollment.input`, `enrollment.qr` from the
-  `display`, `voice` and `enrolls_by` given.
+  `display`, `voice` (or a speaker without a screen), `enrolls_by` and `camera` given.
 - **Provisioning**: `enrollment=` takes a pairing URI or an enrollment code; by default it is read
   from `NESTOR_PAIRING_URI`, else `NESTOR_PAIRING_CODE`. With a pairing URI, the core's address may
   be `None`.
-- **A code typed or scanned on the device** while it waits:
-  `await satellite.enroll("K7QF-2M9X")` or `await satellite.enroll(uri, method=PairingMethod.QR)`
-  returns `ACCEPTED`, `REFUSED` (never sent again), `NOT_PENDING` (the device code won) or `INVALID`.
+- **A code typed on the device** while it waits: `await satellite.enroll("K7QF-2M9X")` returns `ACCEPTED`, `REFUSED` (never sent again), `NOT_PENDING` (the device code won) or `INVALID`.
 - **Identify**: declare `IDENTIFY` and override `Body.identify`; it is called when a person asks a
   pending or paired device to make itself noticed.
 - **Failures** that waiting cannot fix (a core speaking another protocol version, a request it

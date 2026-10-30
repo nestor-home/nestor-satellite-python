@@ -11,18 +11,22 @@ import pytest
 
 from nestor_satellite import (
     AUDIO_CAPTURE,
+    AUDIO_PLAYBACK,
     PAIRING_CODE,
     PAIRING_URI,
     PERSON_DETECTION,
     SPEECH_ACTIVITY,
+    Camera,
     CapabilityNotAllowed,
     Device,
     Display,
     EnrollmentOutcome,
+    Frame,
     InvalidEnrollment,
     Manifest,
     PairingFailed,
     PairingMethod,
+    RecordingSink,
     Satellite,
     SilenceSource,
     TokenStore,
@@ -48,16 +52,43 @@ def test_a_satellite_without_screen_or_voice_can_only_be_provisioned(tmp_path: P
     assert satellite(tmp_path).manifest.pairing_methods == (PairingMethod.PROVISIONING,)
 
 
+class Lens(Camera):
+    async def read(self) -> Frame:
+        return Frame(1, 1, b"\xff")
+
+
 def test_its_pairing_methods_follow_from_its_outputs_and_inputs(tmp_path: Path) -> None:
-    every = satellite(tmp_path, display=Screen(), voice=print, enrolls_by=[PairingMethod.QR, PairingMethod.INPUT])
+    every = satellite(tmp_path, display=Screen(), voice=print, camera=Lens(), enrolls_by=[PairingMethod.INPUT])
     assert every.manifest.pairing_methods == tuple(PairingMethod)
     spoken = satellite(tmp_path, voice=print)
     assert spoken.manifest.pairing_methods == (PairingMethod.SPEECH, PairingMethod.PROVISIONING)
 
 
-def test_a_device_code_method_is_not_an_input(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="enrolls_by"):
-        satellite(tmp_path, enrolls_by=[PairingMethod.DISPLAY])
+def test_a_speaker_without_a_screen_says_its_code_with_the_sdks_voice(tmp_path: Path) -> None:
+    speaker = satellite(tmp_path, AUDIO_PLAYBACK, sink=RecordingSink())
+    assert speaker.manifest.pairing_methods == (PairingMethod.SPEECH, PairingMethod.PROVISIONING)
+
+
+@pytest.mark.parametrize(
+    ("capabilities", "options"),
+    [
+        ((AUDIO_PLAYBACK,), {}),
+        ((), {"sink": RecordingSink()}),
+        ((AUDIO_PLAYBACK,), {"sink": RecordingSink(), "display": Screen()}),
+    ],
+    ids=["no speaker", "playback not declared", "a screen"],
+)  # fmt: skip
+def test_without_a_speaker_or_with_a_screen_the_code_is_not_spoken(
+    tmp_path: Path, capabilities: tuple[str, ...], options: dict[str, Any]
+) -> None:
+    assert PairingMethod.SPEECH not in satellite(tmp_path, *capabilities, **options).manifest.pairing_methods
+
+
+def test_a_qr_code_is_declared_only_with_a_camera_to_read_it(tmp_path: Path) -> None:
+    for method in (PairingMethod.QR, PairingMethod.DISPLAY):
+        with pytest.raises(ValueError, match="enrolls_by"):
+            satellite(tmp_path, enrolls_by=[method])
+    assert PairingMethod.QR not in satellite(tmp_path, enrolls_by=[PairingMethod.INPUT]).manifest.pairing_methods
 
 
 def test_a_pairing_uri_in_the_environment_says_where_the_core_is(tmp_path: Path) -> None:
@@ -81,9 +112,9 @@ def test_a_misconfigured_enrollment_fails_at_once_naming_where_it_came_from(tmp_
 
 async def test_a_code_can_only_be_handed_in_the_way_the_satellite_declared(tmp_path: Path) -> None:
     sensor = satellite(tmp_path, enrolls_by=[PairingMethod.INPUT])
-    with pytest.raises(ValueError, match="enrolls_by"):
+    with pytest.raises(ValueError, match="enrollment methods"):
         await sensor.enroll("K7QF2M9X", method=PairingMethod.QR)
-    with pytest.raises(ValueError, match="enrolls_by"):
+    with pytest.raises(ValueError, match="enrollment methods"):
         await sensor.enroll("K7QF2M9X", method=PairingMethod.DISPLAY)
 
 
@@ -94,9 +125,9 @@ async def test_what_is_not_an_enrollment_code_is_said_so(tmp_path: Path, caplog:
 
 
 async def test_a_paired_satellite_has_nothing_to_enroll(tmp_path: Path) -> None:
-    sensor = satellite(tmp_path, enrolls_by=[PairingMethod.QR])
+    sensor = satellite(tmp_path, enrolls_by=[PairingMethod.INPUT])
     sensor.tokens.save(sensor.core, DEVICE.id, "nst2_paired")
-    assert await sensor.enroll(URI, method=PairingMethod.QR) is EnrollmentOutcome.NOT_PENDING
+    assert await sensor.enroll(URI) is EnrollmentOutcome.NOT_PENDING
 
 
 def test_an_observation_needs_its_capability_declared(tmp_path: Path) -> None:

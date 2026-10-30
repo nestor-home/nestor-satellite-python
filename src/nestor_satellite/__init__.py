@@ -3,6 +3,7 @@ intents and report observations, following the `nestor.satellite/2` protocol."""
 
 from nestor_satellite.audio import AudioSink, AudioSource, RecordingSink, SilenceSource
 from nestor_satellite.body import Body
+from nestor_satellite.camera import AvCamera, Camera, Frame, read_qr
 from nestor_satellite.client import CapabilityNotAllowed, Satellite
 from nestor_satellite.codes import Enrollment, InvalidEnrollment, normalize_enrollment_code, parse_pairing_uri
 from nestor_satellite.pairing import (
@@ -45,8 +46,10 @@ __all__ = [
     "SPEECH_ACTIVITY",
     "AudioSink",
     "AudioSource",
+    "AvCamera",
     "Behavior",
     "Body",
+    "Camera",
     "Capability",
     "CapabilityNotAllowed",
     "Device",
@@ -54,6 +57,7 @@ __all__ = [
     "Enrollment",
     "EnrollmentOutcome",
     "Expression",
+    "Frame",
     "InvalidEnrollment",
     "Manifest",
     "PairingFailed",
@@ -66,4 +70,5 @@ __all__ = [
     "Voice",
     "normalize_enrollment_code",
     "parse_pairing_uri",
+    "read_qr",
 ]

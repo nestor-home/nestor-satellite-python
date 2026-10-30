@@ -4,8 +4,9 @@
 device-code-shown = Enter this code in Nestor to pair this device.
 # The device code, in the log.
 device-code-logged = Pairing code { $code }: enter it in Nestor to pair this device.
-# The device code, aloud: $digits are read one by one.
-device-code-spoken = My pairing code is { $digits }. Once more: { $digits }.
+# The device code, aloud: $digits are read one by one. The bundled voice plays a recorded clip for
+# each piece of text between the digits (scripts/voice.py records them): rerun it after changing this.
+device-code-spoken = Pairing code: { $digits }. I repeat: { $digits }.
 # A device with neither screen nor voice.
 device-code-headless = This device has no screen and no voice: to pair it, add it in Nestor with an enrollment code and set NESTOR_PAIRING_URI.
 device-code-expired = The pairing code expired: asking for a new one.
@@ -20,6 +21,7 @@ enrollment-invalid = This is not an enrollment code.
 enrollment-misconfigured = { $source } is not a pairing URI or an enrollment code.
 enrollment-not-pending = This device was already paired with its code: the enrollment code was not used.
 enrollment-accepted = Enrollment code accepted.
+camera-failed = The camera is unavailable ({ $error }): pair this device another way.
 
 paired = Paired with Nestor.
 pairing-rate-limited = Too many attempts: trying again in { $seconds } s.

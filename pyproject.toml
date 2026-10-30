@@ -31,6 +31,9 @@ classifiers = [
 [project.optional-dependencies]
 # The machine's microphone and speaker (PortAudio). Without it, plug your own AudioSource/AudioSink.
 sounddevice = ["sounddevice>=0.5.2"]
+qr = [
+    "zxing-cpp>=3.1.1",
+]
 
 [project.scripts]
 nestor-satellite = "nestor_satellite.cli:main"
@@ -51,6 +54,7 @@ dev = [
     "jsonschema>=4.26.0",
     # The server, for its black-box conformance suite and its schemas. Tests only: the SDK never imports it.
     "nestor-home[voice]",
+    "segno==1.6.6",
 ]
 
 [tool.uv.sources]
@@ -83,3 +87,7 @@ python-version = "3.12"
 
 [tool.ty.rules]
 possibly-unresolved-reference = "error"
+
+[tool.ty.analysis]
+# Tools of scripts/voice.py and voice_bench.py, run with `uv run --with …`: never dependencies of the SDK.
+allowed-unresolved-imports = ["espeakng_loader", "kokoro_onnx", "faster_whisper"]

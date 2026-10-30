@@ -22,13 +22,17 @@ src/nestor_satellite/
 ├── wire.py       the JSON envelope: messages the satellite sends, parsing what the core sends
 ├── schemas/      JSON Schemas copied from the server (do not edit by hand)
 ├── codes.py      enrollment codes (Crockford base32) and pairing URIs (nestor+http://…/?code=…)
-├── pairing.py    Pairing: device code or enrollment code, Display / Voice ports, TokenStore (mode 600)
+├── pairing.py    Pairing: device code or enrollment code, Display / Voice ports, TokenStore (token and
+│                 refused code hashes, mode 600)
+├── speech.py     SpokenCode: the device code said from the recorded clips in voice/ (index.json, LICENSE)
+├── camera.py     Camera port, AvCamera (PyAV), read_qr (ZXing-C++, `qr` extra): enrollment.qr
 ├── i18n.py       Messages: what people read and hear, from locales/<lang>/satellite.ftl (en, fr)
 ├── client.py     Satellite: pairing, WebRTC connection, hello/welcome, acks, observations, reconnection
 ├── body.py       Body: what a driver overrides to carry out intents (identify included)
 ├── audio.py      AudioSource / AudioSink ports, doubles, WebRTC track adapters
 ├── devices.py    Microphone / Speaker through PortAudio (optional `sounddevice` extra)
 └── cli.py        nestor-satellite run
+scripts/          voice.py records voice/ (Kokoro), voice_bench.py measures it (Whisper)
 tests/            behaviour tests, including the server's black-box conformance suite
 ```
 
@@ -51,7 +55,14 @@ tests/            behaviour tests, including the server's black-box conformance 
    enrollment code is sent at once, a device code is presented on every output (always the log), a
    refused enrollment code is never sent again, `429` waits `Retry-After`. Pairing methods are
    derived from the outputs and inputs a driver gives, never declared by hand.
-7. **Every sentence for people goes through the catalogues** (`locales/en`, `locales/fr`, same
+7. **The voice clips are owned here.** `voice/` is recorded by `uv run --with kokoro-onnx==0.6.1 python
+   scripts/voice.py` from `device-code-spoken`: change that sentence, record again, measure with
+   `scripts/voice_bench.py`, then copy `voice/` to the TypeScript and Rust SDKs (their drift tests
+   compare with this folder). Only voices whose licence allows redistribution, written in
+   `voice/LICENSE`.
+8. **A method is declared only when the SDK carries it out**: `enrollment.qr` only with a `camera`
+   the SDK reads QR codes from, `device_code.speech` only with a voice or a speaker.
+9. **Every sentence for people goes through the catalogues** (`locales/en`, `locales/fr`, same
    messages and variables, short, no em-dash). The core's English `detail` is never shown, only logged.
 
 ## Code conventions

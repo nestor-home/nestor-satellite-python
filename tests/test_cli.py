@@ -5,7 +5,17 @@ from typing import Any
 
 import pytest
 
-from nestor_satellite import AUDIO_CAPTURE, AUDIO_PLAYBACK, PAIRING_CODE, PAIRING_URI, PairingFailed, Satellite, cli
+from nestor_satellite import (
+    AUDIO_CAPTURE,
+    AUDIO_PLAYBACK,
+    PAIRING_CODE,
+    PAIRING_URI,
+    PairingFailed,
+    PairingMethod,
+    Satellite,
+    camera,
+    cli,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -37,6 +47,21 @@ def test_the_command_runs_a_microphone_and_speaker_satellite_in_its_room(tmp_pat
     assert satellite.core == "http://nestor.local:7860"
     assert (satellite.manifest.device.room, satellite.manifest.names) == ("cuisine", {AUDIO_CAPTURE, AUDIO_PLAYBACK})
     assert satellite.tokens.path == tmp_path / "t.json"
+    assert satellite.manifest.pairing_methods == (PairingMethod.SPEECH, PairingMethod.PROVISIONING), "it says its code"
+
+
+@pytest.mark.parametrize(("platform", "format"), [("darwin", "avfoundation"), ("linux", "v4l2")])
+async def test_a_camera_reads_qr_codes_through_the_platforms_video_input(
+    monkeypatch: pytest.MonkeyPatch, platform: str, format: str
+) -> None:
+    monkeypatch.setattr(cli.sys, "platform", platform)
+    satellite = cli.build(cli.parse(["run", "--core", "http://n:7860", "--room", "salon", "--camera", "0"]))
+    assert PairingMethod.QR in satellite.manifest.pairing_methods
+    opened: list[str | None] = []
+    monkeypatch.setattr(camera.av, "open", lambda _device, format, options: opened.append(format) or SimpleNamespace(
+        decode=lambda video: iter(())))  # fmt: skip
+    await cli._camera("0").start()
+    assert opened == [format]
 
 
 def test_a_headless_satellite_pairs_with_the_uri_it_is_given(monkeypatch: pytest.MonkeyPatch) -> None:

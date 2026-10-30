@@ -12,12 +12,13 @@ The token is the device's only credential: it is written once, readable by its o
 
 import asyncio
 import contextlib
+import hashlib
 import json
 import logging
 import os
 from abc import ABC, abstractmethod
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -27,6 +28,7 @@ import httpx
 
 from nestor_satellite.i18n import Messages
 from nestor_satellite.protocol import Manifest, PairingMethod
+from nestor_satellite.speech import SpokenCode
 
 logger = logging.getLogger(__name__)
 
@@ -36,29 +38,67 @@ RETRY_S = 5.0  # how long to wait when the core is busy and does not say
 
 
 class TokenStore:
-    """One device's token for one core, in a JSON file."""
+    """One device's state for one core, in a JSON file readable by its owner only: its token once
+    paired, and the enrollment codes the core refused (their SHA-256 only), so that a restarted
+    device never presents one again (P5)."""
 
     def __init__(self, path: Path | str) -> None:
         self.path = Path(path).expanduser()
 
     def load(self, core: str, device_id: str) -> str | None:
+        saved = self._read(core, device_id)
+        return saved.get("token") if isinstance(saved.get("token"), str) else None
+
+    def save(self, core: str, device_id: str, token: str) -> None:
+        self._write(core, device_id, token, self.refused(core, device_id))
+
+    def forget(self) -> None:
+        """The core no longer knows the token: drop it, keep the refused codes."""
+        saved = self._file()
+        refused = saved.get("refused")
+        if not isinstance(refused, dict) or not refused:
+            self.path.unlink(missing_ok=True)
+            return
+        self._write(saved.get("core"), saved.get("device_id"), None, refused)
+
+    def refused(self, core: str, device_id: str) -> dict[str, str]:
+        """The hashes of the enrollment codes the core refused, with why."""
+        refused = self._read(core, device_id).get("refused")
+        return {k: v for k, v in refused.items() if isinstance(v, str)} if isinstance(refused, dict) else {}
+
+    def refuse(self, core: str, device_id: str, code: str, reason: str) -> None:
+        saved = self._read(core, device_id)
+        token = saved.get("token") if isinstance(saved.get("token"), str) else None
+        self._write(core, device_id, token, self.refused(core, device_id) | {code_hash(code): reason})
+
+    def _file(self) -> dict[str, Any]:
         try:
             saved = json.loads(self.path.read_text())
         except (OSError, ValueError):
-            return None
-        if saved.get("core") != core or saved.get("device_id") != device_id:
-            return None  # a token for another core or device is useless here
-        return saved.get("token")
+            return {}
+        return saved if isinstance(saved, dict) else {}
 
-    def save(self, core: str, device_id: str, token: str) -> None:
+    def _read(self, core: str, device_id: str) -> dict[str, Any]:
+        saved = self._file()
+        if saved.get("core") != core or saved.get("device_id") != device_id:
+            return {}  # another core's or device's state is useless here
+        return saved
+
+    def _write(self, core: Any, device_id: Any, token: str | None, refused: dict[str, str]) -> None:
+        state: dict[str, Any] = {"core": core, "device_id": device_id}
+        if token is not None:
+            state["token"] = token
+        state["refused"] = refused
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w") as file:
-            json.dump({"core": core, "device_id": device_id, "token": token}, file)
+            json.dump(state, file)
         os.chmod(self.path, 0o600)  # an older file may have been more open
 
-    def forget(self) -> None:
-        self.path.unlink(missing_ok=True)
+
+def code_hash(code: str) -> str:
+    """How a refused enrollment code is remembered: never in clear."""
+    return hashlib.sha256(code.encode()).hexdigest()
 
 
 class Display(ABC):
@@ -115,22 +155,28 @@ class _Error:
 
 
 class _Presenter:
-    """Every output the device has, and always the log."""
+    """Every output the device has, and always the log. The device code is said by the driver's
+    voice, else by the SDK's own (`speech`, recorded clips): that one says the code only."""
 
-    def __init__(self, messages: Messages, display: Display | None, voice: Voice | None) -> None:
+    def __init__(
+        self, messages: Messages, display: Display | None, voice: Voice | None, speech: SpokenCode | None
+    ) -> None:
         self._t, self._display, self._voice = messages, display, voice
+        self._speech = speech if voice is None else None
         self._code: str | None = None
 
     def code(self, code: str, *, note: str | None = None) -> None:
         self._code = code
         lead = f"{note} " if note else ""
         logger.warning("%s", self._t("device-code-logged", code=code))
-        if self._display is None and self._voice is None:
+        if self._display is None and self._voice is None and self._speech is None:
             logger.warning("%s", self._t("device-code-headless"))
         if self._display is not None:
             self._display.show(lead + self._t("device-code-shown"), code)
         if self._voice is not None:
             self._voice(lead + self._t("device-code-spoken", digits=", ".join(code)))
+        if self._speech is not None:
+            self._speech.say(code)
 
     def again(self, note: str) -> None:
         """The device code being presented, after a note (an enrollment code refused meanwhile)."""
@@ -138,10 +184,16 @@ class _Presenter:
             self.code(self._code, note=note)
 
     def done(self) -> None:
-        self._code = None
+        self.hush()
         logger.info("%s", self._t("paired"))
         if self._display is not None:
             self._display.clear()
+
+    def hush(self) -> None:
+        """Pairing ended, whichever way: stop saying the code."""
+        self._code = None
+        if self._speech is not None:
+            self._speech.stop()
 
     def failed(self, text: str) -> PairingFailed:
         logger.error("%s", text)
@@ -163,19 +215,25 @@ class Pairing:
         messages: Messages,
         display: Display | None = None,
         voice: Voice | None = None,
+        speech: SpokenCode | None = None,
         enrollment: str | None = None,
+        refused: Mapping[str, str] | None = None,
+        on_refused: Callable[[str, str], None] = lambda _code, _reason: None,
         on_identify: Callable[[], None] = lambda: None,
         poll_s: float = 1.0,
         retry_s: float = RETRY_S,
     ) -> None:
-        """`enrollment`: a canonical enrollment code from the device's configuration."""
+        """`enrollment`: a canonical enrollment code from the device's configuration. `speech`: the SDK's
+        own voice, when the driver gives none. `refused`: the hashes of codes refused before (a restart),
+        with why; `on_refused` keeps a new one (code, reason)."""
         self.manifest = manifest
         self._t = messages
-        self._presenter = _Presenter(messages, display, voice)
+        self._presenter = _Presenter(messages, display, voice, speech)
         self._configured = enrollment
         self._on_identify = on_identify
+        self._on_refused = on_refused
         self._poll_s, self._retry_s = poll_s, retry_s
-        self._refused: dict[str, str] = {}  # code → why the core refused it
+        self._refused: dict[str, str] = dict(refused or {})  # code hash → why the core refused it
         self._inbox: deque[_Submission] = deque()
         self._late: list[_Submission] = []  # answered not_pending: spent only if the pairing really ended
         self._arrived = asyncio.Event()
@@ -185,8 +243,8 @@ class Pairing:
 
     async def enroll(self, code: str, method: PairingMethod) -> EnrollmentOutcome:
         """Have the pairing send this canonical code; its outcome once the core answered."""
-        if code in self._refused:  # never presented again (P5)
-            logger.warning("%s", self._t("enrollment-refused", reason=self._refused[code]))
+        if (reason := self._refused.get(code_hash(code))) is not None:  # never presented again (P5)
+            logger.warning("%s", self._t("enrollment-refused", reason=reason))
             return EnrollmentOutcome.REFUSED
         submission = _Submission(code, method, asyncio.get_running_loop().create_future())
         self._inbox.append(submission)
@@ -212,14 +270,21 @@ class Pairing:
             self._settle_all(error)
             raise
         finally:
+            self._presenter.hush()
             self.active = False
 
     def _next(self) -> _Submission | None:
         if self._inbox:
             return self._inbox.popleft()
-        if self._configured is not None and self._configured not in self._refused:
-            return _Submission(self._configured, PairingMethod.PROVISIONING)
-        return None
+        if self._configured is None:
+            return None
+        if (reason := self._refused.get(code_hash(self._configured))) is not None:
+            if self._note is None:  # refused before a restart: said once, then a device code (P5)
+                self._note = self._t("enrollment-refused", reason=reason)
+                logger.warning("%s", self._note)
+            self._configured = None
+            return None
+        return _Submission(self._configured, PairingMethod.PROVISIONING)
 
     async def _request(self, http: httpx.AsyncClient, submission: _Submission | None) -> dict[str, Any] | None:
         body: dict[str, Any] = {"manifest": self.manifest.to_json()}
@@ -318,7 +383,8 @@ class Pairing:
             raise
 
     def _refuse(self, submission: _Submission, reason: str | None) -> None:
-        self._refused[submission.code] = reason = reason or "unknown"
+        self._refused[code_hash(submission.code)] = reason = reason or "unknown"
+        self._on_refused(submission.code, reason)
         self._note = self._t("enrollment-refused", reason=reason)
         logger.warning("%s", self._note)
         submission.settle(EnrollmentOutcome.REFUSED)
