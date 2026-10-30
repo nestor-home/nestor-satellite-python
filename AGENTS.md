@@ -18,12 +18,14 @@ under 95 %. Manage dependencies with `uv add` / `uv remove` only, and commit `uv
 
 ```text
 src/nestor_satellite/
-├── protocol.py   values of nestor.satellite/1: Device, Capability, Manifest, Behavior, Expression
+├── protocol.py   values of nestor.satellite/2: Device, Capability, Manifest, PairingMethod, Behavior, Expression
 ├── wire.py       the JSON envelope: messages the satellite sends, parsing what the core sends
 ├── schemas/      JSON Schemas copied from the server (do not edit by hand)
-├── pairing.py    pair with a code, TokenStore (file mode 600)
-├── client.py     Satellite: WebRTC connection, hello/welcome, acks, observations, reconnection
-├── body.py       Body: what a driver overrides to carry out intents
+├── codes.py      enrollment codes (Crockford base32) and pairing URIs (nestor+http://…/?code=…)
+├── pairing.py    Pairing: device code or enrollment code, Display / Voice ports, TokenStore (mode 600)
+├── i18n.py       Messages: what people read and hear, from locales/<lang>/satellite.ftl (en, fr)
+├── client.py     Satellite: pairing, WebRTC connection, hello/welcome, acks, observations, reconnection
+├── body.py       Body: what a driver overrides to carry out intents (identify included)
 ├── audio.py      AudioSource / AudioSink ports, doubles, WebRTC track adapters
 ├── devices.py    Microphone / Speaker through PortAudio (optional `sounddevice` extra)
 └── cli.py        nestor-satellite run
@@ -45,6 +47,12 @@ tests/            behaviour tests, including the server's black-box conformance 
    in its own task. Physical safety (limits, watchdogs) lives in the driver and never depends on
    the link being up.
 5. **Secrets:** the token is written with mode 600 and forgotten when the core refuses it.
+6. **Pairing follows the standard** (`../nestor/docs/satellite-protocol.md`, rules P1 to P8): an
+   enrollment code is sent at once, a device code is presented on every output (always the log), a
+   refused enrollment code is never sent again, `429` waits `Retry-After`. Pairing methods are
+   derived from the outputs and inputs a driver gives, never declared by hand.
+7. **Every sentence for people goes through the catalogues** (`locales/en`, `locales/fr`, same
+   messages and variables, short, no em-dash). The core's English `detail` is never shown, only logged.
 
 ## Code conventions
 

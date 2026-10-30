@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from nestor_satellite import Capability, Device, Expression, ProtocolError, wire
+from nestor_satellite import Capability, Device, Expression, Manifest, ProtocolError, wire
 
 
 def message(kind: str, payload: Any) -> dict[str, Any]:
@@ -11,6 +11,10 @@ def message(kind: str, payload: Any) -> dict[str, Any]:
 
 def test_a_message_type_this_sdk_does_not_know_is_read_as_nothing() -> None:
     assert wire.parse(message("intent.dance", {"style": "tango"})) == wire.Received("m-1", None)
+
+
+def test_identify_is_read_as_an_intent() -> None:
+    assert wire.parse(message("intent.identify", {})).message == wire.IdentifyIntent()
 
 
 def test_an_expression_without_intensity_is_at_full_intensity() -> None:
@@ -50,8 +54,20 @@ def test_an_invalid_observation_is_refused_before_it_is_sent(count: Any, confide
         lambda: Device("tv", "", "salon"),
         lambda: Capability("camera"),
         lambda: Capability("audio.capture", {"name": "other"}),
+        lambda: Device("tv", "tv", "salon", brand="Pollen Robotics"),
+        lambda: Manifest.of(Device("tv", "tv", "salon"), "audio.capture", "audio.capture"),
+        lambda: Manifest(Device("tv", "tv", "salon"), pairing_methods=()),
     ],
-    ids=["id with spaces", "room with a colon", "no model", "no family", "name in params"],
+    ids=[
+        "id with spaces",
+        "room with a colon",
+        "no model",
+        "no family",
+        "name in params",
+        "brand not a slug",
+        "capability twice",
+        "no pairing method",
+    ],
 )
 def test_a_manifest_that_the_core_would_refuse_cannot_be_built(build: Any) -> None:
     with pytest.raises(ProtocolError):

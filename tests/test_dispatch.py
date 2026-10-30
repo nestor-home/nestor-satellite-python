@@ -18,6 +18,9 @@ class Recorder(Body):
     def beat(self) -> None:
         self.calls.append(("beat", None))
 
+    def identify(self) -> None:
+        self.calls.append(("identify", None))
+
     def heartbeat(self) -> None:
         self.calls.append(("heartbeat", None))
 
@@ -39,11 +42,12 @@ def test_intents_reach_the_body_and_are_acknowledged_by_id() -> None:
     inbox.handle(raw("intent.behavior", {"behavior": "speaking"}, "a"))
     inbox.handle(raw("intent.expression", {"expression": "joy", "intensity": 0.5}, "b"))
     inbox.handle(raw("intent.beat", {}, "c"))
+    inbox.handle(raw("intent.identify", {}, "d"))
 
     assert [c for c in body.calls if c[0] != "heartbeat"] == [
-        ("behavior", Behavior.SPEAKING), ("expression", (Expression.JOY, 0.5)), ("beat", None)
+        ("behavior", Behavior.SPEAKING), ("expression", (Expression.JOY, 0.5)), ("beat", None), ("identify", None)
     ]  # fmt: skip
-    assert [(m["type"], m["payload"]["of"]) for m in sent] == [("ack", "a"), ("ack", "b"), ("ack", "c")]
+    assert [(m["type"], m["payload"]["of"]) for m in sent] == [("ack", "a"), ("ack", "b"), ("ack", "c"), ("ack", "d")]
 
 
 def test_the_welcome_is_kept_and_the_link_reported_up_without_an_ack() -> None:
@@ -77,6 +81,6 @@ def test_off_contract_messages_are_dropped() -> None:
 def test_the_default_body_ignores_everything() -> None:
     inbox = Dispatcher(Body(), lambda _m: None)
     for kind, payload in [("intent.behavior", {"behavior": "idle"}), ("intent.expression", {"expression": "sigh"}),
-                          ("intent.beat", {})]:  # fmt: skip
+                          ("intent.beat", {}), ("intent.identify", {})]:  # fmt: skip
         assert inbox.handle(raw(kind, payload)) is Outcome.NOTHING
     Body().connected(True)

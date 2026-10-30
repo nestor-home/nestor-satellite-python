@@ -48,6 +48,8 @@ class Dispatcher:
                 self.body.behavior(behavior)
             case wire.ExpressionIntent(expression=expression, intensity=intensity):
                 self.body.expression(expression, intensity)
+            case wire.IdentifyIntent():
+                self.body.identify()
             case _:  # the last intent: a beat
                 self.body.beat()
         self._reply(wire.ack(received.id))

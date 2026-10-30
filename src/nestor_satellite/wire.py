@@ -60,7 +60,12 @@ class BeatIntent:
     pass
 
 
-type Intent = BehaviorIntent | ExpressionIntent | BeatIntent
+@dataclass(frozen=True, slots=True)
+class IdentifyIntent:
+    pass
+
+
+type Intent = BehaviorIntent | ExpressionIntent | BeatIntent | IdentifyIntent
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,6 +92,8 @@ def parse(data: Any) -> Received:
                 message = ExpressionIntent(Expression(payload["expression"]), intensity)
             case "intent.beat":
                 message = BeatIntent()
+            case "intent.identify":
+                message = IdentifyIntent()
             case _:
                 message = None
     except (KeyError, TypeError, ValueError) as error:

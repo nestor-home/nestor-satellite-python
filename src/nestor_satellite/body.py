@@ -17,6 +17,10 @@ class Body:
     def beat(self) -> None:
         """A word is being played: a light speech accent."""
 
+    def identify(self) -> None:
+        """A person asks this device to make itself noticed for a few seconds (blink, wiggle, chime),
+        to tell it apart from others. Declare `device.identify` when it does something."""
+
     def heartbeat(self) -> None:
         """The core was just heard from (a message or audio). A watchdog can rest the device when
         heartbeats stop."""
