@@ -4,6 +4,7 @@ import sys
 
 import pytest
 from nestor.adapters.channels.voice.satellites.conformance import Launch, check_satellite
+from nestor.adapters.i18n import FluentLocalizer, catalogue_dirs
 
 from nestor_satellite import (
     AUDIO_CAPTURE,
@@ -20,6 +21,8 @@ from nestor_satellite import (
     SilenceSource,
     TokenStore,
 )
+
+ENGLISH = FluentLocalizer(catalogue_dirs(["nestor"]))  # the suite's checks, as its report names them
 
 ROBOT = Manifest.of(
     Device("reachy-salon", "reachy-mini", "salon"), AUDIO_CAPTURE, AUDIO_PLAYBACK, EXPRESSION, HEAD_MOTION, IDENTIFY
@@ -59,7 +62,7 @@ class Driver:
         self.launches.append(launch)
         tokens = TokenStore(launch.state / "token.json")
         if self.stale_token:  # paired with a previous core: refused, then paired again
-            tokens.save(launch.url, self.manifest.device.id, "nst2_from-another-life")
+            tokens.save(launch.url, self.manifest.device.id, "nst1_from-another-life")
         self.satellite = Satellite(launch.url, self.manifest, tokens=tokens, body=self.body, source=SilenceSource(),
                                    sink=self.sink, enrollment=launch.pairing_uri, environ={}, poll_s=0.1)  # fmt: skip
         await self.satellite.run()
@@ -71,7 +74,7 @@ async def test_a_satellite_written_with_the_sdk_conforms(manifest: Manifest) -> 
     findings = await check_satellite(driver, deadline_s=10)
 
     assert findings.passed, findings.failures()
-    checks = {f.check for f in findings.items}
+    checks = {ENGLISH.format(f.check, "en") for f in findings.items}
     assert {
         "reconnects with the same token after a hang-up (W4)",
         "pairs with the enrollment code of NESTOR_PAIRING_URI, no code typed (P3, P4)",

@@ -107,7 +107,7 @@ def test_the_pairing_bodies_the_sdk_sends_follow_their_schemas(tmp_path: Any) ->
                                   "device_code": "042917"}),
         httpx.Response(200, json={"status": "pending"}),
         httpx.Response(200, json={"status": "approved"}),
-        httpx.Response(200, json={"status": "approved", "token": "nst2_ok"}),
+        httpx.Response(200, json={"status": "approved", "token": "nst1_ok"}),
     ]  # fmt: skip
 
     def core(request: httpx.Request) -> httpx.Response:

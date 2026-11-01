@@ -1,5 +1,5 @@
 """Write a Nestor satellite in Python: pair with the core, stream audio over WebRTC, carry out its
-intents and report observations, following the `nestor.satellite/2` protocol."""
+intents and report observations, following the `nestor.satellite/1` protocol."""
 
 from nestor_satellite.audio import AudioSink, AudioSource, RecordingSink, SilenceSource
 from nestor_satellite.body import Body

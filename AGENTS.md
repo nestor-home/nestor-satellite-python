@@ -18,7 +18,7 @@ under 95 %. Manage dependencies with `uv add` / `uv remove` only, and commit `uv
 
 ```text
 src/nestor_satellite/
-├── protocol.py   values of nestor.satellite/2: Device, Capability, Manifest, PairingMethod, Behavior, Expression
+├── protocol.py   values of nestor.satellite/1: Device, Capability, Manifest, PairingMethod, Behavior, Expression
 ├── wire.py       the JSON envelope: messages the satellite sends, parsing what the core sends
 ├── schemas/      JSON Schemas copied from the server (do not edit by hand)
 ├── codes.py      enrollment codes (Crockford base32) and pairing URIs (nestor+http://…/?code=…)
