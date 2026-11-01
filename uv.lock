@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -1935,8 +1935,8 @@ wheels = [
 
 [[package]]
 name = "nestor-home"
-version = "0.0.1"
-source = { editable = "../nestor" }
+version = "0.0.2"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioimaplib" },
     { name = "cryptography" },
@@ -1951,41 +1951,14 @@ dependencies = [
     { name = "uvicorn" },
     { name = "websockets" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/f4/2e/8e6359e5eda3437b9642dc1b43e592bffbbf30e3520622ecffa0f72a91b4/nestor_home-0.0.2.tar.gz", hash = "sha256:a48a91ce3b4fe2ddcef92756268720d121154797e25cc5badccd0f8ad3683ce6", size = 1244366, upload-time = "2026-11-01T14:38:19.84Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/1e/f7ab3fd9208c8fe3082a3531dffde9f1b7461e4d22e0222625388048bdc7/nestor_home-0.0.2-py3-none-any.whl", hash = "sha256:308c9828e0bd6931d6b9ae98d02a9e05a2e4a4934dcb7a4cac5aa735be70d772", size = 1410900, upload-time = "2026-11-01T14:38:18.198Z" },
+]
 
 [package.optional-dependencies]
 voice = [
     { name = "pipecat-ai", extra = ["runner", "webrtc"] },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aioimaplib", specifier = ">=2.0.3" },
-    { name = "cryptography", specifier = ">=50.0.2" },
-    { name = "fastapi", specifier = ">=0.162.0" },
-    { name = "fluent-runtime", specifier = ">=0.4.0" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "mcp", specifier = ">=2.3" },
-    { name = "pipecat-ai", extras = ["elevenlabs", "webrtc", "runner"], marker = "extra == 'voice'", specifier = "==1.14.0" },
-    { name = "pydantic", specifier = ">=2.12" },
-    { name = "python-multipart", specifier = ">=0.0.32" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "ruamel-yaml", specifier = ">=0.18" },
-    { name = "uvicorn", specifier = ">=0.54.0" },
-    { name = "websockets", specifier = ">=17" },
-]
-provides-extras = ["voice"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "jsonschema", specifier = ">=4.26.0" },
-    { name = "pre-commit", specifier = "==4.7.0" },
-    { name = "pytest", specifier = "==9.1.1" },
-    { name = "pytest-asyncio", specifier = "==1.4.1" },
-    { name = "pytest-cov", specifier = "==7.1.0" },
-    { name = "respx", specifier = ">=0.22" },
-    { name = "ruff", specifier = "==0.17.3" },
-    { name = "ty", specifier = "==0.0.94" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20261030" },
 ]
 
 [[package]]
@@ -2032,7 +2005,7 @@ provides-extras = ["sounddevice", "qr"]
 [package.metadata.requires-dev]
 dev = [
     { name = "jsonschema", specifier = ">=4.26.0" },
-    { name = "nestor-home", extras = ["voice"], editable = "../nestor" },
+    { name = "nestor-home", extras = ["voice"], specifier = "==0.0.2" },
     { name = "pre-commit", specifier = "==4.7.0" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "pytest-asyncio", specifier = "==1.4.1" },
