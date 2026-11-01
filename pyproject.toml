@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "nestor-satellite"
-version = "0.2.0"
+version = "0.3.0"
 description = "Python SDK to write Nestor satellite drivers: pairing, WebRTC audio and the nestor data channel."
 readme = "README.md"
 license = "MIT"

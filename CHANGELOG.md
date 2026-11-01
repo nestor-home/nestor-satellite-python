@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/nestor-home/nestor-satellite-python/compare/v0.2.0...v0.3.0) (2026-11-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* the default core URL uses port 8471.
+
+### Bug Fixes
+
+* use the core's port 8471 ([#12](https://github.com/nestor-home/nestor-satellite-python/issues/12)) ([a806072](https://github.com/nestor-home/nestor-satellite-python/commit/a80607283015d4a74d95e45bef435edd7efae0a7))
+
 ## [0.2.0](https://github.com/nestor-home/nestor-satellite-python/compare/v0.1.0...v0.2.0) (2026-11-01)
 
 
