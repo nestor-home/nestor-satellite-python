@@ -45,7 +45,7 @@ from nestor_satellite.speech import SpokenCode
 
 from .qr import blank, qr_frame
 
-CORE = "http://nestor.local:7860"
+CORE = "http://nestor.local:8471"
 DEVICE = Device("enceinte-salon", "raspberry-pi-4", "salon")
 MANIFEST = Manifest.of(DEVICE, "audio.capture")
 EVERY_ENROLLMENT = (PairingMethod.INPUT, PairingMethod.PROVISIONING, PairingMethod.QR)
@@ -63,7 +63,7 @@ def test_the_token_is_readable_by_its_owner_only(tmp_path: Path) -> None:
     assert store.load(CORE, "enceinte-salon") == "nst1_secret"
 
 
-@pytest.mark.parametrize(("core", "device"), [("http://other:7860", "enceinte-salon"), (CORE, "reachy-salon")])
+@pytest.mark.parametrize(("core", "device"), [("http://other:8471", "enceinte-salon"), (CORE, "reachy-salon")])
 def test_a_token_for_another_core_or_device_is_not_used(core: str, device: str, tmp_path: Path) -> None:
     store = TokenStore(tmp_path / "t.json")
     store.save(CORE, "enceinte-salon", "nst1_secret")
@@ -356,7 +356,7 @@ async def test_a_busy_core_is_asked_again_after_a_while(caplog: pytest.LogCaptur
     [
         (error(422, "protocol_unsupported"), "Nestor ne parle pas la version du protocole de cet appareil"),
         (error(422, "invalid_request"), "Nestor a rejeté la demande d'appairage (invalid_request (English, for logs))"),
-        (httpx.Response(404, text="Not Found"), "Pas de service d'appairage Nestor à http://nestor.local:7860"),
+        (httpx.Response(404, text="Not Found"), "Pas de service d'appairage Nestor à http://nestor.local:8471"),
     ],
     ids=["another protocol version", "a request it rejects", "no pairing service"],
 )
@@ -587,7 +587,7 @@ class Shown(Camera):
 
 async def test_a_satellite_shown_the_qr_code_of_a_pairing_uri_pairs_with_it(core: Core, tmp_path: Path) -> None:
     code = await core.code(ServerMethod.QR)
-    camera = Shown(f"nestor+http://nestor.local:7860/?code={code}")
+    camera = Shown(f"nestor+http://nestor.local:8471/?code={code}")
     device = Satellite(CORE, MANIFEST, tokens=TokenStore(tmp_path / "t.json"), camera=camera, environ={},
                        transport=core, poll_s=0.02)  # fmt: skip
     assert PairingMethod.QR in device.manifest.pairing_methods

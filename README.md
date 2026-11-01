@@ -10,7 +10,7 @@ depend on the Nestor server.
 
 ```bash
 pip install 'nestor-satellite[sounddevice]'
-NESTOR_PAIRING_URI='nestor+http://nestor.local:7860/?code=K7QF2M9X' nestor-satellite run --room salon
+NESTOR_PAIRING_URI='nestor+http://nestor.local:8471/?code=K7QF2M9X' nestor-satellite run --room salon
 ```
 
 A driver of your own:
@@ -38,7 +38,7 @@ manifest = Manifest.of(
     Device("enceinte-salon", "raspberry-pi-4", "salon"), AUDIO_CAPTURE, AUDIO_PLAYBACK, EXPRESSION, IDENTIFY
 )
 satellite = Satellite(
-    "http://nestor.local:7860",
+    "http://nestor.local:8471",
     manifest,
     tokens=TokenStore("~/.config/nestor-satellite/enceinte-salon.json"),
     body=Led(),

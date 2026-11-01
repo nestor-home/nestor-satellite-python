@@ -19,15 +19,15 @@ def test_what_cannot_be_an_enrollment_code_is_none(typed: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "core", ["http://nestor.local:7860", "https://nestor.example.org/satellites-proxy", "http://192.168.1.4:7860"]
+    "core", ["http://nestor.local:8471", "https://nestor.example.org/satellites-proxy", "http://192.168.1.4:8471"]
 )
 def test_a_pairing_uri_made_by_the_core_gives_back_its_address_and_code(core: str) -> None:
     assert parse_pairing_uri(server.pairing_uri(core, "K7QF2M9X")) == (core, "K7QF2M9X")
 
 
 def test_a_pairing_uri_forgives_how_its_code_was_typed() -> None:
-    assert parse_pairing_uri("NESTOR+HTTP://nestor.local:7860/?code=k7qf-2m9x") == (
-        "http://nestor.local:7860",
+    assert parse_pairing_uri("NESTOR+HTTP://nestor.local:8471/?code=k7qf-2m9x") == (
+        "http://nestor.local:8471",
         "K7QF2M9X",
     )
 
@@ -35,7 +35,7 @@ def test_a_pairing_uri_forgives_how_its_code_was_typed() -> None:
 @pytest.mark.parametrize(
     "uri",
     [
-        "http://nestor.local:7860/?code=K7QF2M9X",
+        "http://nestor.local:8471/?code=K7QF2M9X",
         "nestor+ftp://nestor.local/?code=K7QF2M9X",
         "nestor+http:///?code=K7QF2M9X",
         "nestor+http://nestor.local/",

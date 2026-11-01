@@ -30,7 +30,7 @@ def test_the_command_runs_a_microphone_and_speaker_satellite_in_its_room(tmp_pat
         [
             "run",
             "--core",
-            "http://nestor.local:7860/",
+            "http://nestor.local:8471/",
             "--room",
             "cuisine",
             "--id",
@@ -44,7 +44,7 @@ def test_the_command_runs_a_microphone_and_speaker_satellite_in_its_room(tmp_pat
         ]
     )
     satellite = cli.build(args)  # fmt: skip
-    assert satellite.core == "http://nestor.local:7860"
+    assert satellite.core == "http://nestor.local:8471"
     assert (satellite.manifest.device.room, satellite.manifest.names) == ("cuisine", {AUDIO_CAPTURE, AUDIO_PLAYBACK})
     assert satellite.tokens.path == tmp_path / "t.json"
     assert satellite.manifest.pairing_methods == (PairingMethod.SPEECH, PairingMethod.PROVISIONING), "it says its code"
@@ -55,7 +55,7 @@ async def test_a_camera_reads_qr_codes_through_the_platforms_video_input(
     monkeypatch: pytest.MonkeyPatch, platform: str, format: str
 ) -> None:
     monkeypatch.setattr(cli.sys, "platform", platform)
-    satellite = cli.build(cli.parse(["run", "--core", "http://n:7860", "--room", "salon", "--camera", "0"]))
+    satellite = cli.build(cli.parse(["run", "--core", "http://n:8471", "--room", "salon", "--camera", "0"]))
     assert PairingMethod.QR in satellite.manifest.pairing_methods
     opened: list[str | None] = []
     monkeypatch.setattr(camera.av, "open", lambda _device, format, options: opened.append(format) or SimpleNamespace(
@@ -65,11 +65,11 @@ async def test_a_camera_reads_qr_codes_through_the_platforms_video_input(
 
 
 def test_a_headless_satellite_pairs_with_the_uri_it_is_given(monkeypatch: pytest.MonkeyPatch) -> None:
-    uri = "nestor+http://nestor.local:7860/?code=K7QF2M9X"
+    uri = "nestor+http://nestor.local:8471/?code=K7QF2M9X"
     flagged = cli.build(cli.parse(["run", "--room", "salon", "--pairing-uri", uri, "--lang", "fr"]))
-    assert (flagged.core, flagged.messages.language) == ("http://nestor.local:7860", "fr")
+    assert (flagged.core, flagged.messages.language) == ("http://nestor.local:8471", "fr")
     monkeypatch.setenv(PAIRING_URI, uri.replace("nestor.local", "nestor.lan"))
-    assert cli.build(cli.parse(["run", "--room", "salon"])).core == "http://nestor.lan:7860"
+    assert cli.build(cli.parse(["run", "--room", "salon"])).core == "http://nestor.lan:8471"
 
 
 def test_a_code_alone_needs_the_cores_address(capsys: pytest.CaptureFixture[str]) -> None:
@@ -95,7 +95,7 @@ def test_main_runs_the_satellite_until_interrupted(monkeypatch: pytest.MonkeyPat
         raise KeyboardInterrupt
 
     monkeypatch.setattr(Satellite, "run", run)
-    cli.main(["run", "--core", "http://h:7860", "--room", "salon", "--id", "pi", "--token-file", str(tmp_path / "t")])
+    cli.main(["run", "--core", "http://h:8471", "--room", "salon", "--id", "pi", "--token-file", str(tmp_path / "t")])
     assert ran == ["pi"]
 
 
@@ -105,5 +105,5 @@ def test_a_satellite_that_cannot_be_paired_exits_with_an_error(monkeypatch: pyte
 
     monkeypatch.setattr(Satellite, "run", run)
     with pytest.raises(SystemExit) as exited:
-        cli.main(["run", "--core", "http://h:7860", "--room", "salon", "--token-file", str(tmp_path / "t")])
+        cli.main(["run", "--core", "http://h:8471", "--room", "salon", "--token-file", str(tmp_path / "t")])
     assert exited.value.code == 1
