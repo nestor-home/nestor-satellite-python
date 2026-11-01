@@ -1,4 +1,4 @@
-"""Pairing with the core, as `nestor.satellite/2` defines it (rules P1 to P8).
+"""Pairing with the core, as `nestor.satellite/1` defines it (rules P1 to P8).
 
 One decision. With an enrollment code (configured, typed or scanned), the device sends it with its
 request and is paired at once. Otherwise it asks for a device code and presents it through every

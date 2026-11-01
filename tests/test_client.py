@@ -126,7 +126,7 @@ async def test_what_is_not_an_enrollment_code_is_said_so(tmp_path: Path, caplog:
 
 async def test_a_paired_satellite_has_nothing_to_enroll(tmp_path: Path) -> None:
     sensor = satellite(tmp_path, enrolls_by=[PairingMethod.INPUT])
-    sensor.tokens.save(sensor.core, DEVICE.id, "nst2_paired")
+    sensor.tokens.save(sensor.core, DEVICE.id, "nst1_paired")
     assert await sensor.enroll(URI) is EnrollmentOutcome.NOT_PENDING
 
 
@@ -177,7 +177,7 @@ async def test_a_core_that_cannot_pair_this_device_stops_it_and_audio_is_release
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     caplog.set_level(logging.ERROR)
-    answer = {"error": "protocol_unsupported", "detail": "the device speaks nestor.satellite/2, this core only /3"}
+    answer = {"error": "protocol_unsupported", "detail": "the device speaks nestor.satellite/1, this core only /2"}
     source = CountingSource()
     sensor = satellite(tmp_path, AUDIO_CAPTURE, source=source,
                        transport=httpx.MockTransport(lambda _request: httpx.Response(422, json=answer)))  # fmt: skip

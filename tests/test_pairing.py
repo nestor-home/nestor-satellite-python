@@ -57,16 +57,16 @@ def test_the_token_is_readable_by_its_owner_only(tmp_path: Path) -> None:
     path.write_text("{}")
     path.chmod(0o644)  # left more open by someone else
     store = TokenStore(path)
-    store.save(CORE, "enceinte-salon", "nst2_secret")
+    store.save(CORE, "enceinte-salon", "nst1_secret")
 
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
-    assert store.load(CORE, "enceinte-salon") == "nst2_secret"
+    assert store.load(CORE, "enceinte-salon") == "nst1_secret"
 
 
 @pytest.mark.parametrize(("core", "device"), [("http://other:7860", "enceinte-salon"), (CORE, "reachy-salon")])
 def test_a_token_for_another_core_or_device_is_not_used(core: str, device: str, tmp_path: Path) -> None:
     store = TokenStore(tmp_path / "t.json")
-    store.save(CORE, "enceinte-salon", "nst2_secret")
+    store.save(CORE, "enceinte-salon", "nst1_secret")
     assert store.load(core, device) is None
 
 
@@ -159,7 +159,7 @@ async def test_a_headless_device_logs_its_code_and_how_else_it_can_be_paired(
     code = caplog.text.split("Pairing code ")[1][:6]
     await core.type_device_code(code)
 
-    assert (await running).startswith("nst2_")
+    assert (await running).startswith("nst1_")
     assert f"Pairing code {code}: enter it in Nestor to pair this device." in caplog.text
     assert "set NESTOR_PAIRING_URI" in caplog.text
     assert "Paired with Nestor." in caplog.text
@@ -187,7 +187,7 @@ async def test_a_configured_enrollment_code_pairs_at_once_and_no_device_code_is_
     screen, said = Screen(), []
     device = pairing(enrollment=await core.code(), display=screen, voice=said.append,
                      methods=(PairingMethod.DISPLAY, PairingMethod.SPEECH, PairingMethod.PROVISIONING))  # fmt: skip
-    assert (await device.pair(core.http)).startswith("nst2_")
+    assert (await device.pair(core.http)).startswith("nst1_")
     assert not screen.shown and not said and "Pairing code" not in caplog.text
     [(path, body)] = core.sent
     assert (path, body["method"]) == ("/satellites/pairings", "enrollment.provisioning")
@@ -228,7 +228,7 @@ async def test_an_enrollment_code_typed_while_waiting_pairs_the_device(core: Cor
     await until(lambda: screen.shown)
 
     assert await device.enroll(await core.code(ServerMethod.INPUT), PairingMethod.INPUT) is EnrollmentOutcome.ACCEPTED
-    assert (await running).startswith("nst2_")
+    assert (await running).startswith("nst1_")
     assert screen.cleared == 1, "it stops presenting its device code"
     assert core.sent[-1][0].endswith("/enrollment")
 
@@ -238,7 +238,7 @@ async def test_an_enrollment_code_handed_in_before_pairing_starts_is_sent_with_t
     code = await core.code(ServerMethod.QR)
     outcome = asyncio.create_task(device.enroll(code, PairingMethod.QR))
     await asyncio.sleep(0)
-    assert (await device.pair(core.http)).startswith("nst2_")
+    assert (await device.pair(core.http)).startswith("nst1_")
     assert await outcome is EnrollmentOutcome.ACCEPTED
     assert [(path, body.get("method")) for path, body in core.sent] == [("/satellites/pairings", "enrollment.qr")]
 
@@ -253,7 +253,7 @@ async def test_when_the_device_code_wins_the_enrollment_code_is_not_spent(core: 
     assert (
         await device.enroll(await core.code(ServerMethod.INPUT), PairingMethod.INPUT) is EnrollmentOutcome.NOT_PENDING
     )
-    assert (await running).startswith("nst2_")
+    assert (await running).startswith("nst1_")
     assert core.service.additions(), "the enrollment code can still pair another device"
 
 
@@ -346,8 +346,8 @@ async def run(transport: httpx.AsyncBaseTransport, device: Pairing) -> str:
 async def test_a_busy_core_is_asked_again_after_a_while(caplog: pytest.LogCaptureFixture) -> None:
     ticket = {"pairing_id": "p1", "status": "approved", "expires_at": "2026-10-30T12:00:00+00:00"}
     core = Scripted(error(429, "too_many_pending"), httpx.Response(201, json=ticket),
-                    httpx.Response(200, json={"status": "approved", "token": "nst2_ok"}))  # fmt: skip
-    assert await run(core, pairing(retry_s=0.01)) == "nst2_ok"
+                    httpx.Response(200, json={"status": "approved", "token": "nst1_ok"}))  # fmt: skip
+    assert await run(core, pairing(retry_s=0.01)) == "nst1_ok"
     assert "Too many devices are waiting to pair: trying again in 0 s." in caplog.text
 
 
@@ -418,7 +418,7 @@ class Flaky(httpx.AsyncBaseTransport):
             self.requests.append(json.loads(request.content))
             return httpx.Response(201, json=APPROVED if "enrollment_code" in self.requests[-1] else PENDING)
         if request.url.path.endswith("/p2"):
-            return httpx.Response(200, json={"status": "approved", "token": "nst2_ok"})
+            return httpx.Response(200, json={"status": "approved", "token": "nst1_ok"})
         return httpx.Response(200, json={"status": "pending"})
 
 
@@ -439,7 +439,7 @@ async def test_a_code_handed_in_while_the_core_is_away_is_sent_once_it_is_back(
         outcome = asyncio.create_task(device.enroll("K7QF2M9X", PairingMethod.INPUT))
         with pytest.raises(httpx.HTTPError):
             await running  # the satellite tries again later
-        assert await device.pair(http) == "nst2_ok"
+        assert await device.pair(http) == "nst1_ok"
     assert await outcome is EnrollmentOutcome.ACCEPTED
     assert core.requests[-1]["enrollment_code"] == "K7QF2M9X"
 
@@ -537,7 +537,7 @@ async def test_a_pairing_stopped_while_the_code_is_said_hushes_it(core: Core) ->
 def test_refused_codes_are_kept_as_hashes_and_outlive_the_token(tmp_path: Path) -> None:
     store = TokenStore(tmp_path / "state.json")
     store.refuse(CORE, "enceinte-salon", "K7QF2M9X", "expired")
-    store.save(CORE, "enceinte-salon", "nst2_secret")
+    store.save(CORE, "enceinte-salon", "nst1_secret")
     store.forget()
 
     assert store.load(CORE, "enceinte-salon") is None
