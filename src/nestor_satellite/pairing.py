@@ -93,7 +93,7 @@ class TokenStore:
         fd = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, "w") as file:
             json.dump(state, file)
-        os.chmod(self.path, 0o600)  # an older file may have been more open
+        os.chmod(self.path, 0o600)  # whoever made the file, only its owner reads it
 
 
 def code_hash(code: str) -> str:
