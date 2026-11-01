@@ -6,7 +6,7 @@ read it before changing anything.
 ## Commands
 
 ```bash
-uv sync --all-extras         # dev group included; needs the nestor repo at ../nestor
+uv sync --all-extras         # dev group included, with the server (nestor-home) from PyPI
 uv run pre-commit install
 uv run ruff check && uv run ruff format --check && uv run ty check && uv run pytest
 ```
