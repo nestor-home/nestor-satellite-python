@@ -41,8 +41,8 @@ tests/            behaviour tests, including the server's black-box conformance 
 1. **Never import `nestor`** from `src/`: drivers stay independent of the server. The server is a
    dev dependency, used only by tests (its conformance suite and its wire codec).
 2. **The server owns the protocol.** `src/nestor_satellite/schemas/` is a copy of
-   `nestor/src/nestor/modules/satellites/schemas/`. To refresh:
-   `cp ../nestor/src/nestor/modules/satellites/schemas/*.json src/nestor_satellite/schemas/`,
+   the schemas of a `nestor-home` release. To refresh:
+   `uvx --from nestor-home==<version> nestor satellites schemas --out src/nestor_satellite/schemas/`,
    then adapt `wire.py`/`protocol.py` until the tests pass. Every message the SDK sends is validated
    against these schemas in the tests.
 3. **Be lenient in what you read, strict in what you send.** An unknown message type from a newer
@@ -51,7 +51,7 @@ tests/            behaviour tests, including the server's black-box conformance 
    in its own task. Physical safety (limits, watchdogs) lives in the driver and never depends on
    the link being up.
 5. **Secrets:** the token is written with mode 600 and forgotten when the core refuses it.
-6. **Pairing follows the standard** (`../nestor/docs/satellite-protocol.md`, rules P1 to P8): an
+6. **Pairing follows the standard** (https://nestorhome.dev/docs/satellites/protocol/, rules P1 to P8): an
    enrollment code is sent at once, a device code is presented on every output (always the log), a
    refused enrollment code is never sent again, `429` waits `Retry-After`. Pairing methods are
    derived from the outputs and inputs a driver gives, never declared by hand.
