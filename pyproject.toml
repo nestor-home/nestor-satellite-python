@@ -53,12 +53,9 @@ dev = [
     "pre-commit==4.7.0",
     "jsonschema>=4.26.0",
     # The server, for its black-box conformance suite and its schemas. Tests only: the SDK never imports it.
-    "nestor-home[voice]",
+    "nestor-home[voice]==0.0.2",
     "segno==1.6.6",
 ]
-
-[tool.uv.sources]
-nestor-home = { path = "../nestor", editable = true }
 
 [tool.uv.build-backend]
 module-name = "nestor_satellite"

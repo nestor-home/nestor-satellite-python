@@ -120,8 +120,9 @@ Every sentence for people comes from the Fluent catalogues in `src/nestor_satell
 
 ## Development
 
-The tests run the SDK against the Nestor server's conformance suite, so the `nestor` repository is
-expected next to this one (`../nestor`, a dev-only dependency).
+The tests run the SDK against the Nestor server's conformance suite: the server (`nestor-home`) is a
+dev dependency, pinned and taken from PyPI. To test against a local checkout of the server instead:
+`uv run --with-editable ../nestor pytest`.
 
 ```bash
 uv sync --all-extras
