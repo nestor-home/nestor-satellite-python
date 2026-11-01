@@ -39,7 +39,7 @@ qr = [
 nestor-satellite = "nestor_satellite.cli:main"
 
 [project.urls]
-Homepage = "https://nestor.mathislambert.fr"
+Homepage = "https://nestorhome.dev"
 Source = "https://github.com/nestor-home/nestor-satellite-python"
 Issues = "https://github.com/nestor-home/nestor-satellite-python/issues"
 
