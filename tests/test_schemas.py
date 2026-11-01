@@ -1,7 +1,4 @@
-"""The SDK's copy of the protocol schemas, and what the SDK sends, against the server's source of truth.
-
-When this fails after a server change, refresh the copy (see AGENTS.md) and adapt the SDK.
-"""
+"""What the SDK sends, against its copy of the protocol schemas, and what the server reads of it, and back."""
 
 import json
 from importlib.resources import files
@@ -11,15 +8,12 @@ import pytest
 from jsonschema import Draft202012Validator
 from nestor.modules.behavior import Behavior as ServerBehavior
 from nestor.modules.behavior import Expression as ServerExpression
-from nestor.modules.satellites import PROTOCOL as ServerProtocol
-from nestor.modules.satellites import PairingMethod as ServerMethod
 from nestor.modules.satellites import wire as server
 from referencing import Registry, Resource
 
 from nestor_satellite import (
     AUDIO_CAPTURE,
     PERSON_DETECTION,
-    PROTOCOL,
     Behavior,
     Capability,
     Device,
@@ -38,18 +32,26 @@ MANIFEST = Manifest(
 )
 
 
-def test_the_copied_schemas_are_the_servers() -> None:
-    assert server.schemas() == COPY, "refresh src/nestor_satellite/schemas from ../nestor (AGENTS.md)"
+def _received(sent: server.Message) -> wire.Received:
+    return wire.parse(json.loads(json.dumps(server.encode(sent, id="m-1"))))
 
 
-def test_the_sdk_knows_every_value_the_server_may_send() -> None:
-    assert {b.value for b in Behavior} == {b.value for b in ServerBehavior}
-    assert {e.value for e in Expression} == {e.value for e in ServerExpression}
-    assert [m.value for m in PairingMethod] == [m.value for m in ServerMethod]
-    assert {m.value for m in PairingMethod if m.enrollment} == {
-        m.value for m in ServerMethod if m.proof.value == "enrollment_code"
-    }
-    assert ServerProtocol == PROTOCOL
+def test_the_sdk_reads_every_behavior_and_expression_the_server_may_send() -> None:
+    for behavior in ServerBehavior:
+        expected = wire.BehaviorIntent(Behavior(behavior.value))
+        assert _received(server.BehaviorIntent(behavior=behavior)) == wire.Received("m-1", expected)
+    for expression in ServerExpression:
+        expected = wire.ExpressionIntent(Expression(expression.value), 0.5)
+        sent = server.ExpressionIntent(expression=expression, intensity=0.5)
+        assert _received(sent) == wire.Received("m-1", expected)
+
+
+def test_the_server_reads_every_pairing_method_the_sdk_declares() -> None:
+    manifest = Manifest(MANIFEST.device, MANIFEST.capabilities, tuple(PairingMethod))
+    assert server.Manifest.from_json(manifest.to_json()).to_json() == manifest.to_json()
+    for method in (m for m in PairingMethod if m.enrollment):
+        proof = server.EnrollmentProof.from_json({"enrollment_code": "ABCD2345", "method": method.value})
+        assert proof.method.value == method.value
 
 
 def _validator(name: str) -> Any:

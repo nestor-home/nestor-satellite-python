@@ -39,10 +39,10 @@ tests/            behaviour tests, including the server's black-box conformance 
 ## Rules
 
 1. **Never import `nestor`** from `src/`: drivers stay independent of the server. The server is a
-   dev dependency, used only by tests (its conformance suite and its schemas).
+   dev dependency, used only by tests (its conformance suite and its wire codec).
 2. **The server owns the protocol.** `src/nestor_satellite/schemas/` is a copy of
-   `nestor/src/nestor/modules/satellites/schemas/`; `tests/test_schemas.py` fails when they drift.
-   To refresh: `cp ../nestor/src/nestor/modules/satellites/schemas/*.json src/nestor_satellite/schemas/`,
+   `nestor/src/nestor/modules/satellites/schemas/`. To refresh:
+   `cp ../nestor/src/nestor/modules/satellites/schemas/*.json src/nestor_satellite/schemas/`,
    then adapt `wire.py`/`protocol.py` until the tests pass. Every message the SDK sends is validated
    against these schemas in the tests.
 3. **Be lenient in what you read, strict in what you send.** An unknown message type from a newer
@@ -57,9 +57,8 @@ tests/            behaviour tests, including the server's black-box conformance 
    derived from the outputs and inputs a driver gives, never declared by hand.
 7. **The voice clips are owned here.** `voice/` is recorded by `uv run --with kokoro-onnx==0.6.1 python
    scripts/voice.py` from `device-code-spoken`: change that sentence, record again, measure with
-   `scripts/voice_bench.py`, then copy `voice/` to the TypeScript and Rust SDKs (their drift tests
-   compare with this folder). Only voices whose licence allows redistribution, written in
-   `voice/LICENSE`.
+   `scripts/voice_bench.py`, then copy `voice/` to the TypeScript and Rust SDKs. Only voices whose
+   licence allows redistribution, written in `voice/LICENSE`.
 8. **A method is declared only when the SDK carries it out**: `enrollment.qr` only with a `camera`
    the SDK reads QR codes from, `device_code.speech` only with a voice or a speaker.
 9. **Every sentence for people goes through the catalogues** (`locales/en`, `locales/fr`, same

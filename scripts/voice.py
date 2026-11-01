@@ -4,7 +4,7 @@
 
 For each language: the ten digits, and each piece of text of the catalogue's `device-code-spoken`
 around the digits. Run it again after changing that sentence, then copy `voice/` to the TypeScript
-and Rust SDKs (their drift tests compare). Same model, same voices, same machine: same clips.
+and Rust SDKs. Same model, same voices, same machine: same clips.
 
 Kokoro's weights are Apache-2.0 and its training data permissive (see `voice/LICENSE`). Piper was
 measured first and set aside: its French voices are either unintelligible (fr_FR-mls) or derived
