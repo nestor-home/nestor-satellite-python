@@ -1,6 +1,6 @@
 """A satellite's life: pair once, then stay connected to the core, reconnecting when the link drops.
 
-    satellite = Satellite("http://nestor.local:7860", manifest, tokens=TokenStore("~/.config/me.json"),
+    satellite = Satellite("http://nestor.local:8471", manifest, tokens=TokenStore("~/.config/me.json"),
                           body=MyBody(), source=Microphone(), sink=Speaker(), display=MyScreen())
     await satellite.run()
 

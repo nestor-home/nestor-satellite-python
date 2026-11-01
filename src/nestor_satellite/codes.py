@@ -3,7 +3,7 @@
 An enrollment code is 8 symbols of Crockford's base32, shown grouped by four (`K7QF-2M9X`). Reading
 it back forgives case, dashes, spaces, and the letters Crockford maps to digits (O → 0, I and L → 1).
 
-A pairing URI carries the core's address with the code: `nestor+http://nestor.local:7860/?code=K7QF2M9X`.
+A pairing URI carries the core's address with the code: `nestor+http://nestor.local:8471/?code=K7QF2M9X`.
 Removing `nestor+` and the query gives the core's base URL.
 """
 

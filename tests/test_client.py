@@ -194,7 +194,7 @@ async def test_a_code_typed_on_a_waiting_satellite_pairs_it(tmp_path: Path) -> N
 
     core = Core()
     screen = Screen()
-    keypad = satellite(tmp_path, core="http://nestor.local:7860", transport=core, display=screen,
+    keypad = satellite(tmp_path, core="http://nestor.local:8471", transport=core, display=screen,
                        enrolls_by=[PairingMethod.INPUT], poll_s=0.02, backoff_s=(5.0, 5.0))  # fmt: skip
     running = asyncio.create_task(keypad.run())
     while not core.service.pending():

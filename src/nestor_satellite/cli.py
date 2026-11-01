@@ -1,7 +1,7 @@
 """`nestor-satellite run`: this machine's microphone and speaker as a satellite of a Nestor core.
 
-    nestor-satellite run --core http://nestor.local:7860 --room salon
-    nestor-satellite run --pairing-uri "nestor+http://nestor.local:7860/?code=K7QF2M9X" --room salon
+    nestor-satellite run --core http://nestor.local:8471 --room salon
+    nestor-satellite run --pairing-uri "nestor+http://nestor.local:8471/?code=K7QF2M9X" --room salon
 
 Useful on a Raspberry Pi with a USB speakerphone. Give it the pairing URI of an enrollment code made
 in Nestor (flag, or `NESTOR_PAIRING_URI`), or type in Nestor the pairing code it says on its speaker
@@ -35,7 +35,7 @@ def parse(argv: Sequence[str] | None = None) -> argparse.Namespace:
     commands = parser.add_subparsers(dest="command", required=True)
     run = commands.add_parser("run", help="run a microphone + speaker satellite")
     run.add_argument(
-        "--core", help="the core's voice server, e.g. http://nestor.local:7860 (default: the pairing URI's)"
+        "--core", help="the core's voice server, e.g. http://nestor.local:8471 (default: the pairing URI's)"
     )
     enrollment = run.add_mutually_exclusive_group()
     enrollment.add_argument("--pairing-uri", help="pair with this enrollment code's URI (default: $NESTOR_PAIRING_URI)")

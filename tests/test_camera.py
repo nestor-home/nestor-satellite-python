@@ -12,7 +12,7 @@ from nestor_satellite import AvCamera, Frame, camera, read_qr
 
 from .qr import blank, qr_frame, y4m
 
-URI = "nestor+http://nestor.local:7860/?code=K7QF2M9X"
+URI = "nestor+http://nestor.local:8471/?code=K7QF2M9X"
 
 
 def test_the_pairing_uri_is_read_from_a_noisy_off_centre_qr_code() -> None:
