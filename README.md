@@ -1,78 +1,31 @@
 # nestor-satellite
 
-Python SDK to write **satellites** for [Nestor](https://github.com/nestor-home/nestor): devices (a
-Raspberry Pi speaker, a robot, a screen) that pair with a Nestor core, stream audio over WebRTC,
-carry out the core's intents and report what they observe, following the `nestor.satellite/2`
-protocol. The SDK does not depend on the Nestor server.
+Python SDK to write **satellites** for [Nestor](https://nestorhome.dev): devices (a Raspberry Pi
+speaker, a robot, a screen) that pair with a Nestor server, stream audio over WebRTC, carry out its
+intents and report what they observe, following the `nestor.satellite/2` protocol. It does not
+depend on the Nestor server.
 
-## Pairing
-
-A device is paired one of two ways, whichever comes first:
-
-- **an enrollment code** made in the Nestor admin is given to the device, usually as a pairing URI
-  (`nestor+http://nestor.local:7860/?code=K7QF2M9X`): it is paired at once;
-- otherwise the device asks for a **device code** and presents it on every output it has (its
-  screen, its voice, and always its log), and a person types it in the admin.
-
-A headless device (no screen, no voice) is paired with an enrollment code:
+**Documentation:** [nestorhome.dev/docs/sdks/python](https://nestorhome.dev/docs/sdks/python/)
+(pairing options, the command, conformance).
 
 ```bash
-pip install "nestor-satellite[sounddevice]"
-NESTOR_PAIRING_URI="nestor+http://nestor.local:7860/?code=K7QF2M9X" nestor-satellite run --room salon
-# or
-nestor-satellite run --room salon --pairing-uri "nestor+http://nestor.local:7860/?code=K7QF2M9X"
-# or, the core's address given separately
-nestor-satellite run --core http://nestor.local:7860 --room salon --pairing-code K7QF-2M9X
+pip install 'nestor-satellite[sounddevice]'
+NESTOR_PAIRING_URI='nestor+http://nestor.local:7860/?code=K7QF2M9X' nestor-satellite run --room salon
 ```
 
-Without one, it asks for a device code and says it aloud on its speaker, digit by digit, twice (and
-logs it). The token is kept in `~/.config/nestor-satellite/<id>.json` (mode 600); later runs
-reconnect with it. Enrollment codes the core refused are kept there too, as hashes, so a restart
-never presents one again.
-
-### The SDK's own voice
-
-A device with a speaker (a `sink`, `AUDIO_PLAYBACK` declared) and no screen says its device code
-with recorded clips shipped in the package: offline, no speech engine, in English or French (other
-languages are said in English). It declares `device_code.speech` by itself; a `voice=` callback
-replaces it. The clips (`src/nestor_satellite/voice/`, 16 kHz mono WAV, about 500 KB) were recorded
-once with Kokoro-82M by `scripts/voice.py` and are shared under CC BY 4.0 (see `voice/LICENSE`);
-the TypeScript and Rust SDKs ship the same files. `scripts/voice_bench.py` measures them: Whisper
-hears 20 codes out of 20 in English and 18 out of 20 in French.
-
-### QR codes
-
-Given a `camera`, a satellite declares `enrollment.qr`, turns the camera on while it waits to be
-paired, and pairs with the QR code of a pairing URI shown to it (made in the admin):
-
-```bash
-pip install "nestor-satellite[sounddevice,qr]"
-nestor-satellite run --core http://nestor.local:7860 --room salon --camera 0   # macOS: the first camera
-```
-
-`AvCamera` reads any camera FFmpeg knows (`AvCamera("0", format="avfoundation")` on macOS,
-`AvCamera("/dev/video0", format="v4l2")` on Linux); ZXing-C++ reads the codes (`qr` extra).
-
-## Writing a driver
+A driver of your own:
 
 ```python
 import asyncio
-from nestor_satellite import AUDIO_CAPTURE, AUDIO_PLAYBACK, EXPRESSION, IDENTIFY, Body, Device, Display, Manifest
-from nestor_satellite import PairingMethod, Satellite, TokenStore
+
+from nestor_satellite import AUDIO_CAPTURE, AUDIO_PLAYBACK, EXPRESSION, IDENTIFY, Body, Device, Manifest
+from nestor_satellite import Satellite, TokenStore
 from nestor_satellite.devices import Microphone, Speaker
-
-
-class Screen(Display):
-    def show(self, text, code=None):
-        print(text, code or "")  # draw it on the device's screen
-
-    def clear(self):
-        print("paired")
 
 
 class Led(Body):
     def behavior(self, behavior):
-        print("attitude:", behavior)
+        print("attitude:", behavior)  # idle, listening, thinking, speaking
 
     def expression(self, expression, intensity):
         print("expression:", expression, intensity)
@@ -81,42 +34,22 @@ class Led(Body):
         print("blink!")  # a person is telling devices apart
 
 
-def say(text):
-    print("saying:", text)  # hand it to the device's speech synthesis, and return at once
-
-
 manifest = Manifest.of(
     Device("enceinte-salon", "raspberry-pi-4", "salon"), AUDIO_CAPTURE, AUDIO_PLAYBACK, EXPRESSION, IDENTIFY
 )
 satellite = Satellite(
     "http://nestor.local:7860",
     manifest,
-    tokens=TokenStore("~/.config/salon.json"),
+    tokens=TokenStore("~/.config/nestor-satellite/enceinte-salon.json"),
     body=Led(),
     source=Microphone(),
     sink=Speaker(),
-    display=Screen(),  # shows the device code: declares device_code.display
-    voice=say,  # says it, digit by digit, twice: declares device_code.speech (default: the SDK's clips)
-    enrolls_by=[PairingMethod.INPUT],  # a code can be typed on it: see `enroll` below
-    camera=None,  # an AvCamera reads QR codes: declares enrollment.qr
-    locale="fr",  # what it says to people, in English or French (default: the environment's language)
 )
 asyncio.run(satellite.run())  # pairs the first time, then stays connected and reconnects
 ```
 
-- **Pairing methods** are not declared by hand: the manifest lists `enrollment.provisioning` always,
-  and `device_code.display`, `device_code.speech`, `enrollment.input`, `enrollment.qr` from the
-  `display`, `voice` (or a speaker without a screen), `enrolls_by` and `camera` given.
-- **Provisioning**: `enrollment=` takes a pairing URI or an enrollment code; by default it is read
-  from `NESTOR_PAIRING_URI`, else `NESTOR_PAIRING_CODE`. With a pairing URI, the core's address may
-  be `None`.
-- **A code typed on the device** while it waits: `await satellite.enroll("K7QF-2M9X")` returns `ACCEPTED`, `REFUSED` (never sent again), `NOT_PENDING` (the device code won) or `INVALID`.
-- **Identify**: declare `IDENTIFY` and override `Body.identify`; it is called when a person asks a
-  pending or paired device to make itself noticed.
-- **Failures** that waiting cannot fix (a core speaking another protocol version, a request it
-  rejects) stop `run` with `PairingFailed`, said on every output; a core that is down is retried.
-
-Every sentence for people comes from the Fluent catalogues in `src/nestor_satellite/locales/`.
+The recorded voice that says device codes is shared under CC BY 4.0: see
+[`src/nestor_satellite/voice/LICENSE`](src/nestor_satellite/voice/LICENSE).
 
 ## Development
 
