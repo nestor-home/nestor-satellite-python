@@ -1935,7 +1935,7 @@ wheels = [
 
 [[package]]
 name = "nestor-home"
-version = "0.2.0"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioimaplib" },
@@ -1945,15 +1945,16 @@ dependencies = [
     { name = "httpx" },
     { name = "mcp" },
     { name = "pydantic" },
+    { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "pyyaml" },
     { name = "ruamel-yaml" },
     { name = "uvicorn" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7b/da/a33d0c3b99bea65fe273be85fd3bd966d6d1fbe3b7ca8123d3135bb4f8bd/nestor_home-0.2.0.tar.gz", hash = "sha256:3bb307f2f15d21fc1ee9c8223cbb5e183f327b9399f7ea729e603061dba3a6f4", size = 1249188, upload-time = "2026-11-01T17:13:21.066Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/f0/06335a270590ffaf671b0730627b5da00c9a0057fc1155a64e91859a0561/nestor_home-0.3.0.tar.gz", hash = "sha256:99e10c7129522a16de490b035f6b3bfab59b89d9f7b3c9562a5138c89a3b7715", size = 1248727, upload-time = "2026-11-01T20:16:42.814Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/79/a9d03b93fc577014e7efd55e42e899256bd9b54e60a79d9c9e579fcaae72/nestor_home-0.2.0-py3-none-any.whl", hash = "sha256:b91636343fd8cd5c83b890dde57582fc28145af1b74ac3f83731f14d32849345", size = 1416306, upload-time = "2026-11-01T17:13:19.581Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/f4/75688d25fca9f0a30916b7d1b4b776a08c5119cc2708a8dac114aa68642c/nestor_home-0.3.0-py3-none-any.whl", hash = "sha256:8a8cc26f0ce110b8dce7cf8607888b8f9662acb5a60828a42e4e218a6ded7bb9", size = 1415292, upload-time = "2026-11-01T20:16:41.356Z" },
 ]
 
 [package.optional-dependencies]
@@ -2005,7 +2006,7 @@ provides-extras = ["sounddevice", "qr"]
 [package.metadata.requires-dev]
 dev = [
     { name = "jsonschema", specifier = ">=4.26.0" },
-    { name = "nestor-home", extras = ["voice"], specifier = "==0.2.0" },
+    { name = "nestor-home", extras = ["voice"], specifier = "==0.3.0" },
     { name = "pre-commit", specifier = "==4.7.0" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "pytest-asyncio", specifier = "==1.4.1" },
