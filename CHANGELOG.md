@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.0](https://github.com/nestor-home/nestor-satellite-python/compare/v0.3.0...v0.4.0) (2026-11-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* talk over one WebSocket link, with voice as an extra ([#16](https://github.com/nestor-home/nestor-satellite-python/issues/16))
+
+### Features
+
+* talk over one WebSocket link, with voice as an extra ([#16](https://github.com/nestor-home/nestor-satellite-python/issues/16)) ([55257eb](https://github.com/nestor-home/nestor-satellite-python/commit/55257eb991f66432cfde90f068a21f053d91cf56))
+
 ## [0.3.0](https://github.com/nestor-home/nestor-satellite-python/compare/v0.2.0...v0.3.0) (2026-11-01)
 
 
