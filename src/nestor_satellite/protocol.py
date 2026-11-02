@@ -15,6 +15,8 @@ PROTOCOL = "nestor.satellite/1"
 SDK = "nestor-satellite-python"
 
 # Capabilities the core knows today; a driver may declare others (`family.feature`).
+TEXT_INPUT = "text.input"  # it sends what a person typed
+TEXT_DISPLAY = "text.display"  # it shows the assistant's words
 AUDIO_CAPTURE = "audio.capture"
 AUDIO_PLAYBACK = "audio.playback"
 EXPRESSION = "expression.emotion"
@@ -91,8 +93,8 @@ class Capability:
 
 @dataclass(frozen=True, slots=True)
 class Manifest:
-    """What the device says about itself. A `Satellite` sets `pairing_methods` from the outputs and
-    inputs it was given: a driver declares its capabilities only."""
+    """What the device says about itself. A `Satellite` sets `pairing_methods`, and the text and audio
+    capabilities, from the outputs and inputs it was given: a driver declares the others only."""
 
     device: Device
     capabilities: tuple[Capability, ...] = ()

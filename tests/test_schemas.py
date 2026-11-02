@@ -61,7 +61,14 @@ def _validator(name: str) -> Any:
 
 @pytest.mark.parametrize(
     "message",
-    [wire.hello(MANIFEST), wire.ack("intent-1"), wire.person_detected(2, 0.75), wire.speech_activity(True)],
+    [
+        wire.hello(MANIFEST, "nst1_token"),
+        wire.ack("intent-1"),
+        wire.person_detected(2, 0.75),
+        wire.speech_activity(True),
+        wire.text_input("Allume la lumière"),
+        wire.text_input("x" * wire.TYPED_MAX),
+    ],
     ids=lambda m: m["type"],
 )
 def test_what_the_sdk_sends_follows_the_schema_and_the_server_reads_it(message: dict[str, Any]) -> None:
@@ -79,8 +86,11 @@ def test_what_the_sdk_sends_follows_the_schema_and_the_server_reads_it(message: 
          wire.ExpressionIntent(Expression.SIGH, 0.4)),
         (server.BeatIntent(), wire.BeatIntent()),
         (server.IdentifyIntent(), wire.IdentifyIntent()),
+        (server.TextIntent(text="Il fait 19 °C."), wire.TextIntent("Il fait 19 °C.", True)),
+        (server.TextIntent(text="Je regarde…", final=False), wire.TextIntent("Je regarde…", False)),
+        (server.TextIntent(text="x" * wire.SHOWN_MAX), wire.TextIntent("x" * wire.SHOWN_MAX)),
     ],
-    ids=["welcome", "behavior", "expression", "beat", "identify"],
+    ids=["welcome", "behavior", "expression", "beat", "identify", "text", "text in progress", "longest text"],
 )  # fmt: skip
 def test_the_sdk_reads_what_the_server_sends(sent: server.Message, expected: object) -> None:
     data = json.loads(json.dumps(server.encode(sent, id="m-1")))

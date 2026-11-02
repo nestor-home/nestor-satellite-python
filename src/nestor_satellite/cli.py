@@ -1,12 +1,15 @@
-"""`nestor-satellite run`: this machine's microphone and speaker as a satellite of a Nestor core.
+"""`nestor-satellite run`: this machine as a satellite of a Nestor core, by voice, in writing or both.
 
     nestor-satellite run --core http://nestor.local:8471 --room salon
     nestor-satellite run --pairing-uri "nestor+http://nestor.local:8471/?code=K7QF2M9X" --room salon
+    nestor-satellite run --core http://nestor.local:8471 --room bureau --text --no-voice
 
-Useful on a Raspberry Pi with a USB speakerphone. Give it the pairing URI of an enrollment code made
-in Nestor (flag, or `NESTOR_PAIRING_URI`), or type in Nestor the pairing code it says on its speaker
-(and logs); with `--camera`, show it the QR code of a pairing URI. The token is then kept in
-`~/.config/nestor-satellite/<id>.json`.
+By default its microphone and speaker (`pip install 'nestor-satellite[voice,sounddevice]'`): useful on
+a Raspberry Pi with a USB speakerphone. With `--text`, each line typed on its standard input is sent
+to Nestor and the answers are printed; `--no-voice` leaves the microphone and speaker out. Give it
+the pairing URI of an enrollment code made in Nestor (flag, or `NESTOR_PAIRING_URI`), or type in
+Nestor the pairing code it says on its speaker (and logs); with `--camera`, show it the QR code of a
+pairing URI. The token is then kept in `~/.config/nestor-satellite/<id>.json`.
 """
 
 import argparse
@@ -16,13 +19,17 @@ import logging
 import re
 import socket
 import sys
+import threading
 from collections.abc import Sequence
 from typing import Any
 
-from nestor_satellite.client import Satellite
+from nestor_satellite.client import CapabilityNotAllowed, Satellite
 from nestor_satellite.codes import InvalidEnrollment
 from nestor_satellite.pairing import PairingFailed, TokenStore
-from nestor_satellite.protocol import AUDIO_CAPTURE, AUDIO_PLAYBACK, Device, Manifest
+from nestor_satellite.protocol import Device, Manifest, ProtocolError
+from nestor_satellite.wire import TYPED_MAX
+
+logger = logging.getLogger("nestor_satellite")
 
 
 def default_id() -> str:
@@ -33,7 +40,7 @@ def default_id() -> str:
 def parse(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="nestor-satellite", description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
-    run = commands.add_parser("run", help="run a microphone + speaker satellite")
+    run = commands.add_parser("run", help="run a satellite: microphone and speaker, typed text, or both")
     run.add_argument(
         "--core", help="the core's voice server, e.g. http://nestor.local:8471 (default: the pairing URI's)"
     )
@@ -45,6 +52,10 @@ def parse(argv: Sequence[str] | None = None) -> argparse.Namespace:
     run.add_argument("--id", default=default_id(), help="this device's id (default: the host name)")
     run.add_argument("--model", default="python-satellite")
     run.add_argument("--token-file", help="where the token is kept (default: ~/.config/nestor-satellite/<id>.json)")
+    run.add_argument("--text", action="store_true", help="send the lines typed on stdin, print the answers")
+    run.add_argument(
+        "--voice", action=argparse.BooleanOptionalAction, default=True, help="use the microphone and speaker"
+    )
     run.add_argument("--input-device", help="PortAudio input device (name or index)")
     run.add_argument("--output-device", help="PortAudio output device (name or index)")
     run.add_argument(
@@ -56,20 +67,63 @@ def parse(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 
 def build(args: argparse.Namespace) -> Satellite:
-    from nestor_satellite.devices import Microphone, Speaker
+    options: dict[str, Any] = {}
+    if args.voice:
+        from nestor_satellite.devices import Microphone, Speaker
 
-    manifest = Manifest.of(Device(args.id, args.model, args.room), AUDIO_CAPTURE, AUDIO_PLAYBACK)
+        options |= {"source": Microphone(device=_device(args.input_device)),
+                    "sink": Speaker(device=_device(args.output_device))}  # fmt: skip
+    if args.text:
+        options |= {"text_input": True, "text_display": _print}
     tokens = TokenStore(args.token_file or f"~/.config/nestor-satellite/{args.id}.json")
     return Satellite(
         args.core,
-        manifest,
+        Manifest(Device(args.id, args.model, args.room)),
         tokens=tokens,
         enrollment=args.pairing_uri or args.pairing_code,
         locale=args.lang,
-        source=Microphone(device=_device(args.input_device)),
-        sink=Speaker(device=_device(args.output_device)),
         camera=_camera(args.camera),
+        **options,
     )
+
+
+def _print(text: str, final: bool) -> None:
+    print(text, flush=True)
+
+
+async def serve(satellite: Satellite, *, typing: bool) -> None:
+    """Run the satellite; with `typing`, send each line of stdin as typed text."""
+    if not typing:
+        return await satellite.run()
+    reading = asyncio.create_task(_type(satellite))
+    try:
+        await satellite.run()
+    finally:
+        reading.cancel()
+
+
+async def _type(satellite: Satellite) -> None:
+    """Lines of stdin, read in a daemon thread (a blocked read never holds the process), sent as they come."""
+    loop = asyncio.get_running_loop()
+    lines: asyncio.Queue[str | None] = asyncio.Queue()
+
+    def read() -> None:
+        for line in sys.stdin:
+            loop.call_soon_threadsafe(lines.put_nowait, line)
+        loop.call_soon_threadsafe(lines.put_nowait, None)
+
+    threading.Thread(target=read, name="stdin", daemon=True).start()
+    while (line := await lines.get()) is not None:
+        if text := line.strip():
+            try:
+                sent = satellite.send_text(text)
+            except CapabilityNotAllowed:
+                logger.warning("%s", satellite.messages("text-not-allowed"))
+            except ProtocolError:
+                logger.warning("%s", satellite.messages("text-too-long", max=TYPED_MAX))
+            else:
+                if not sent:
+                    logger.warning("%s", satellite.messages("text-not-sent"))
 
 
 def _camera(device: str | None) -> Any:
@@ -95,6 +149,6 @@ def main(argv: Sequence[str] | None = None) -> None:
         sys.exit(f"nestor-satellite: {error}")
     with contextlib.suppress(KeyboardInterrupt):
         try:
-            asyncio.run(satellite.run())
+            asyncio.run(serve(satellite, typing=args.text))
         except PairingFailed:
             sys.exit(1)  # already said why, in the log

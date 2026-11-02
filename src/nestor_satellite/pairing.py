@@ -22,13 +22,15 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
 from nestor_satellite.i18n import Messages
 from nestor_satellite.protocol import Manifest, PairingMethod
-from nestor_satellite.speech import SpokenCode
+
+if TYPE_CHECKING:  # the SDK's own voice comes with the `voice` extra
+    from nestor_satellite.speech import SpokenCode
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +161,7 @@ class _Presenter:
     voice, else by the SDK's own (`speech`, recorded clips): that one says the code only."""
 
     def __init__(
-        self, messages: Messages, display: Display | None, voice: Voice | None, speech: SpokenCode | None
+        self, messages: Messages, display: Display | None, voice: Voice | None, speech: "SpokenCode | None"
     ) -> None:
         self._t, self._display, self._voice = messages, display, voice
         self._speech = speech if voice is None else None
@@ -215,7 +217,7 @@ class Pairing:
         messages: Messages,
         display: Display | None = None,
         voice: Voice | None = None,
-        speech: SpokenCode | None = None,
+        speech: "SpokenCode | None" = None,
         enrollment: str | None = None,
         refused: Mapping[str, str] | None = None,
         on_refused: Callable[[str, str], None] = lambda _code, _reason: None,

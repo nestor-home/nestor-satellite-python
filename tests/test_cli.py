@@ -1,8 +1,10 @@
+import asyncio
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import av
 import pytest
 
 from nestor_satellite import (
@@ -10,11 +12,14 @@ from nestor_satellite import (
     AUDIO_PLAYBACK,
     PAIRING_CODE,
     PAIRING_URI,
+    TEXT_DISPLAY,
+    TEXT_INPUT,
+    CapabilityNotAllowed,
     PairingFailed,
     PairingMethod,
     Satellite,
-    camera,
     cli,
+    wire,
 )
 
 
@@ -58,7 +63,7 @@ async def test_a_camera_reads_qr_codes_through_the_platforms_video_input(
     satellite = cli.build(cli.parse(["run", "--core", "http://n:8471", "--room", "salon", "--camera", "0"]))
     assert PairingMethod.QR in satellite.manifest.pairing_methods
     opened: list[str | None] = []
-    monkeypatch.setattr(camera.av, "open", lambda _device, format, options: opened.append(format) or SimpleNamespace(
+    monkeypatch.setattr(av, "open", lambda _device, format, options: opened.append(format) or SimpleNamespace(
         decode=lambda video: iter(())))  # fmt: skip
     await cli._camera("0").start()
     assert opened == [format]
@@ -107,3 +112,60 @@ def test_a_satellite_that_cannot_be_paired_exits_with_an_error(monkeypatch: pyte
     with pytest.raises(SystemExit) as exited:
         cli.main(["run", "--core", "http://h:8471", "--room", "salon", "--token-file", str(tmp_path / "t")])
     assert exited.value.code == 1
+
+
+@pytest.mark.parametrize(
+    ("flags", "names"),
+    [(["--text"], {AUDIO_CAPTURE, AUDIO_PLAYBACK, TEXT_INPUT, TEXT_DISPLAY}),
+     (["--text", "--no-voice"], {TEXT_INPUT, TEXT_DISPLAY}),
+     (["--no-voice"], set())],
+    ids=["voice and text", "text only", "neither"],
+)  # fmt: skip
+def test_the_command_runs_in_writing_aloud_or_both(tmp_path: Path, flags: list[str], names: set[str]) -> None:
+    args = cli.parse(
+        ["run", "--core", "http://n:8471", "--room", "bureau", "--token-file", str(tmp_path / "t"), *flags]
+    )
+    assert cli.build(args).manifest.names == names
+
+
+class Lines:
+    """Standard input: the lines a person typed, then the end."""
+
+    def __init__(self, *lines: str) -> None:
+        self.lines = [f"{line}\n" for line in lines]
+
+    def __iter__(self) -> Any:
+        return iter(self.lines)
+
+
+async def test_lines_typed_on_stdin_are_sent_and_answers_printed(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    typed = ["Bonjour", "  ", "x" * 5000, "hors ligne", "refusé", "Merci"]
+    monkeypatch.setattr(cli.sys, "stdin", Lines(*typed))
+    args = cli.parse(["run", "--core", "http://n:8471", "--room", "bureau", "--token-file", str(tmp_path / "t"),
+                      "--text", "--no-voice"])  # fmt: skip
+    sent: list[str] = []
+
+    def send_text(self: Satellite, text: str) -> bool:
+        wire.text_input(text)  # too long: refused before it is sent
+        if text == "refusé":
+            raise CapabilityNotAllowed("the household did not allow typing")
+        sent.append(text)
+        return text != "hors ligne"
+
+    async def run(self: Satellite) -> None:
+        while sent[-1:] != ["Merci"]:
+            await asyncio.sleep(0.01)
+
+    monkeypatch.setattr(Satellite, "send_text", send_text)
+    monkeypatch.setattr(Satellite, "run", run)
+    await cli.serve(cli.build(args), typing=True)
+    assert sent == ["Bonjour", "hors ligne", "Merci"], "blank lines skipped"
+    for said in ("Too long to send: 4,000 characters at most.", "the text was not sent", "did not allow typing"):
+        assert said in caplog.text
+    cli._print("Il est midi.", True)
+    assert capsys.readouterr().out == "Il est midi.\n"

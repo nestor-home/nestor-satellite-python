@@ -1,9 +1,9 @@
 """Enrollment by QR code (`enrollment.qr`): the device's camera, and the codes read from its frames.
 
 A `Satellite` given a camera declares `enrollment.qr`, opens the camera only while it waits to be
-paired, and sends the pairing URI of any QR code it reads. Decoding is ZXing-C++
-(`pip install nestor-satellite[qr]`); `AvCamera` reads any camera FFmpeg knows (AVFoundation on
-macOS, V4L2 on Linux) through PyAV, already a dependency of the WebRTC stack.
+paired, and sends the pairing URI of any QR code it reads. Decoding is ZXing-C++, and `AvCamera`
+reads any camera FFmpeg knows (AVFoundation on macOS, V4L2 on Linux) through PyAV: both come with
+`pip install nestor-satellite[qr]`.
 """
 
 import asyncio
@@ -12,8 +12,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
-
-import av
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +53,14 @@ def read_qr(frame: Frame) -> list[str]:
     ]
 
 
+def _av() -> Any:
+    try:
+        import av
+    except ImportError as error:
+        raise RuntimeError("cameras need `pip install nestor-satellite[qr]`") from error
+    return av
+
+
 class AvCamera(Camera):
     """A camera through FFmpeg: `AvCamera("0", format="avfoundation")` on macOS (the first camera),
     `AvCamera("/dev/video0", format="v4l2")` on Linux. Frames are decoded in a worker thread."""
@@ -64,6 +70,8 @@ class AvCamera(Camera):
         self._container: Any = None
 
     async def start(self) -> None:
+        av = _av()
+
         def opened() -> Any:
             return av.open(self._device, format=self._format, options=self._options)
 

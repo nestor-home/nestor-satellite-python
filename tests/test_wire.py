@@ -32,8 +32,22 @@ def test_an_expression_without_intensity_is_at_full_intensity() -> None:
         message("intent.expression", {"expression": "joy", "intensity": 3}),
         message("intent.expression", {"expression": "joy", "intensity": True}),
         message("welcome", {"room": "salon"}),
+        message("intent.text", {"text": ""}),
+        message("intent.text", {"text": "x" * 16001}),
+        message("intent.text", {"text": "Bonjour.", "final": "yes"}),
     ],
-    ids=["not an object", "no id", "payload not an object", "unknown behavior", "too intense", "boolean", "partial"],
+    ids=[
+        "not an object",
+        "no id",
+        "payload not an object",
+        "unknown behavior",
+        "too intense",
+        "boolean",
+        "partial",
+        "empty text",
+        "text too long",
+        "final not a boolean",
+    ],
 )
 def test_a_malformed_message_from_the_core_is_a_protocol_error(data: Any) -> None:
     with pytest.raises(ProtocolError):
@@ -44,6 +58,12 @@ def test_a_malformed_message_from_the_core_is_a_protocol_error(data: Any) -> Non
 def test_an_invalid_observation_is_refused_before_it_is_sent(count: Any, confidence: Any) -> None:
     with pytest.raises(ProtocolError):
         wire.person_detected(count, confidence)
+
+
+@pytest.mark.parametrize("text", ["", "x" * 4001, None])
+def test_typed_text_out_of_bounds_is_refused_before_it_is_sent(text: Any) -> None:
+    with pytest.raises(ProtocolError):
+        wire.text_input(text)
 
 
 @pytest.mark.parametrize(

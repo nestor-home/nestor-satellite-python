@@ -32,9 +32,9 @@ def raw(kind: str, payload: dict[str, Any], id: str = "m-1") -> str:
     return json.dumps({"type": kind, "id": id, "at": "2026-10-30T12:00:00+00:00", "payload": payload})
 
 
-def dispatcher() -> tuple[Dispatcher, Recorder, list[dict[str, Any]]]:
+def dispatcher(**options: Any) -> tuple[Dispatcher, Recorder, list[dict[str, Any]]]:
     body, sent = Recorder(), []
-    return Dispatcher(body, sent.append), body, sent
+    return Dispatcher(body, sent.append, **options), body, sent
 
 
 def test_intents_reach_the_body_and_are_acknowledged_by_id() -> None:
@@ -64,11 +64,19 @@ def test_every_message_from_the_core_is_a_heartbeat() -> None:
     assert body.calls == [("heartbeat", None)], "unknown, so not acknowledged, but the core is alive"
 
 
-def test_the_transports_hang_up_ends_the_connection_and_its_other_messages_are_ignored() -> None:
-    inbox, body, sent = dispatcher()
-    assert inbox.handle(json.dumps({"type": "signalling", "message": {"type": "peerLeft"}})) is Outcome.HUNG_UP
-    assert inbox.handle(json.dumps({"type": "signalling", "message": {"type": "renegotiate"}})) is Outcome.NOTHING
-    assert not body.calls and not sent
+def test_the_assistants_words_reach_the_text_display_in_order_and_are_acknowledged() -> None:
+    shown: list[tuple[str, bool]] = []
+    inbox, _, sent = dispatcher(text_display=lambda text, final: shown.append((text, final)))
+    inbox.handle(raw("intent.text", {"text": "Je regarde…", "final": False}, "a"))
+    inbox.handle(raw("intent.text", {"text": "Il fait 19 °C."}, "b"))
+    assert shown == [("Je regarde…", False), ("Il fait 19 °C.", True)]
+    assert [m["payload"]["of"] for m in sent] == ["a", "b"]
+
+
+def test_text_for_a_device_without_a_display_is_still_acknowledged() -> None:
+    inbox, _, sent = dispatcher()
+    inbox.handle(raw("intent.text", {"text": "Bonjour."}, "a"))
+    assert [m["payload"]["of"] for m in sent] == ["a"]
 
 
 def test_off_contract_messages_are_dropped() -> None:
@@ -80,7 +88,8 @@ def test_off_contract_messages_are_dropped() -> None:
 
 def test_the_default_body_ignores_everything() -> None:
     inbox = Dispatcher(Body(), lambda _m: None)
-    for kind, payload in [("intent.behavior", {"behavior": "idle"}), ("intent.expression", {"expression": "sigh"}),
-                          ("intent.beat", {}), ("intent.identify", {})]:  # fmt: skip
+    intents = [("intent.behavior", {"behavior": "idle"}), ("intent.expression", {"expression": "sigh"}),
+               ("intent.beat", {}), ("intent.identify", {}), ("intent.text", {"text": "Bonjour."})]  # fmt: skip
+    for kind, payload in intents:
         assert inbox.handle(raw(kind, payload)) is Outcome.NOTHING
     Body().connected(True)

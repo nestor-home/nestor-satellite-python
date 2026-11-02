@@ -1967,17 +1967,21 @@ name = "nestor-satellite"
 version = "0.3.0"
 source = { editable = "." }
 dependencies = [
-    { name = "aiortc" },
     { name = "fluent-runtime" },
     { name = "httpx" },
+    { name = "websockets" },
 ]
 
 [package.optional-dependencies]
 qr = [
+    { name = "av" },
     { name = "zxing-cpp" },
 ]
 sounddevice = [
     { name = "sounddevice" },
+]
+voice = [
+    { name = "aiortc" },
 ]
 
 [package.dev-dependencies]
@@ -1995,13 +1999,15 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiortc", specifier = ">=1.15" },
+    { name = "aiortc", marker = "extra == 'voice'", specifier = ">=1.15" },
+    { name = "av", marker = "extra == 'qr'", specifier = ">=14" },
     { name = "fluent-runtime", specifier = ">=0.4.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "sounddevice", marker = "extra == 'sounddevice'", specifier = ">=0.5.2" },
+    { name = "websockets", specifier = ">=15" },
     { name = "zxing-cpp", marker = "extra == 'qr'", specifier = ">=3.1.1" },
 ]
-provides-extras = ["sounddevice", "qr"]
+provides-extras = ["voice", "sounddevice", "qr"]
 
 [package.metadata.requires-dev]
 dev = [

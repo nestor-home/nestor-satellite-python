@@ -33,3 +33,10 @@ no-core = Nestor's address is missing: give it, or a pairing URI (NESTOR_PAIRING
 
 token-refused = Nestor no longer knows this device: pairing again.
 link-failed = Link to Nestor failed ({ $error }): retrying in { $seconds } s.
+link-closed = Nestor closed the link: reconnecting in { $seconds } s.
+link-off-contract = Nestor refused this device's greeting: retrying in { $seconds } s.
+link-replaced = Another connection of this device to Nestor took over: this one stops.
+audio-failed = Audio with Nestor failed ({ $error }): retrying in { $seconds } s.
+text-not-sent = Not connected to Nestor: the text was not sent.
+text-not-allowed = Nestor did not allow typing on this device.
+text-too-long = Too long to send: { $max } characters at most.

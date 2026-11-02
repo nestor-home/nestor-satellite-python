@@ -33,3 +33,10 @@ no-core = L'adresse de Nestor manque : indiquez-la, ou un URI d'appairage (NESTO
 
 token-refused = Nestor ne connaît plus cet appareil : nouvel appairage.
 link-failed = La liaison avec Nestor a échoué ({ $error }) : nouvel essai dans { $seconds } s.
+link-closed = Nestor a fermé la liaison : reconnexion dans { $seconds } s.
+link-off-contract = Nestor a refusé le salut de cet appareil : nouvel essai dans { $seconds } s.
+link-replaced = Une autre connexion de cet appareil à Nestor a pris le relais : celle-ci s'arrête.
+audio-failed = L'audio avec Nestor a échoué ({ $error }) : nouvel essai dans { $seconds } s.
+text-not-sent = Pas de liaison avec Nestor : le texte n'a pas été envoyé.
+text-not-allowed = Nestor n'a pas autorisé la saisie de texte sur cet appareil.
+text-too-long = Trop long pour être envoyé : { $max } caractères au plus.
