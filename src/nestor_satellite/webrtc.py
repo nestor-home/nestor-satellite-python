@@ -7,7 +7,6 @@ satellite offers again when it fails.
 """
 
 import asyncio
-import contextlib
 import fractions
 import time
 from collections.abc import Callable
@@ -118,8 +117,7 @@ class WebRtcAudio:
             await peer.close()
             for player in players:
                 player.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await player
+            await asyncio.gather(*players, return_exceptions=True)
             await microphone.close()
 
 

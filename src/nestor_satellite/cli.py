@@ -145,7 +145,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING, format="%(levelname)s %(message)s")
     try:
         satellite = build(args)
-    except (InvalidEnrollment, ValueError) as error:
+    except (InvalidEnrollment, ValueError, RuntimeError) as error:  # RuntimeError: a missing extra
         sys.exit(f"nestor-satellite: {error}")
     with contextlib.suppress(KeyboardInterrupt):
         try:

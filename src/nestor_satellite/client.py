@@ -35,7 +35,7 @@ from nestor_satellite.audio import AudioSink, AudioSource
 from nestor_satellite.body import Body
 from nestor_satellite.camera import Camera, read_qr
 from nestor_satellite.codes import Enrollment, InvalidEnrollment
-from nestor_satellite.dispatch import Dispatcher, Outcome, TextDisplay
+from nestor_satellite.dispatch import Dispatcher, TextDisplay
 from nestor_satellite.i18n import Messages
 from nestor_satellite.pairing import (
     PAIRING_CODE,
@@ -307,13 +307,14 @@ class Satellite:
             try:
                 async with asyncio.timeout(WELCOME_S) as waiting:
                     async for raw in link:
-                        if dispatcher.handle(raw) is not Outcome.WELCOMED or welcomed:
+                        if (welcome := dispatcher.handle(raw)) is None or welcomed:
                             continue
                         waiting.reschedule(None)
-                        welcomed, self.welcome, self._outbox = True, dispatcher.welcome, outbox
+                        welcomed, self.welcome, self._outbox = True, welcome, outbox
                         tasks.append(asyncio.create_task(_write(link, outbox)))
-                        if self._audio is not None and dispatcher.welcome and dispatcher.welcome.capabilities & AUDIO:
-                            tasks.append(asyncio.create_task(self._hear(http, token, link, refused)))
+                        if self._audio is not None and welcome.capabilities & AUDIO:
+                            hearing = self._hear(http, token, welcome.capabilities, link, refused)
+                            tasks.append(asyncio.create_task(hearing))
                         self.body.connected(True)
             except websockets.ConnectionClosed:
                 pass
@@ -326,12 +327,13 @@ class Satellite:
                     self.body.connected(False)
         return (Close.TOKEN_REFUSED if refused.is_set() else _close(link.close_code)), welcomed
 
-    async def _hear(self, http: httpx.AsyncClient, token: str, link: Any, refused: asyncio.Event) -> None:
+    async def _hear(
+        self, http: httpx.AsyncClient, token: str, allowed: frozenset[str], link: Any, refused: asyncio.Event
+    ) -> None:
         """While the link is up: the audio connection, offered again with a growing delay when it fails."""
         from nestor_satellite.webrtc import TokenRefused
 
-        assert self._audio is not None and self.welcome is not None
-        allowed = self.welcome.capabilities
+        assert self._audio is not None
         delay = self._backoff[0]
         while True:
             try:

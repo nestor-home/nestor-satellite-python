@@ -26,7 +26,6 @@ class Link:
     def __init__(self, socket: WebSocket, satellite: Paired, allowed: frozenset[str]) -> None:
         self.socket, self.satellite, self.allowed = socket, satellite, allowed
         self.received: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
-        self.ended = asyncio.Event()
 
     async def send(self, message: server.Message, id: str | None = None) -> None:
         await self.socket.send_text(json.dumps(server.encode(message, id=id)))
@@ -37,7 +36,6 @@ class Link:
     async def close(self, code: int) -> None:
         with contextlib.suppress(RuntimeError):
             await self.socket.close(code)
-        self.ended.set()
 
 
 class Core:
@@ -85,11 +83,9 @@ class Core:
         welcome = server.Welcome(device_id=satellite.id, room=satellite.room, capabilities=tuple(sorted(allowed)))
         await link.send(welcome)
         self.links.put_nowait(link)
-        try:
+        with contextlib.suppress(Exception):  # until the device leaves, or the test closes the link
             while True:
                 link.received.put_nowait(json.loads(await socket.receive_text()))
-        except Exception:  # the device left, or the test closed the link
-            link.ended.set()
 
 
 def _free_port() -> int:

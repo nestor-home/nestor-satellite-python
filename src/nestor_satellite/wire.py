@@ -110,7 +110,7 @@ def parse(data: Any) -> Received:
             case "intent.text":
                 text, final = payload["text"], payload.get("final", True)
                 if not isinstance(text, str) or not 0 < len(text) <= SHOWN_MAX or not isinstance(final, bool):
-                    raise ValueError("expected 1 to 16000 characters and a boolean final")
+                    raise ValueError(f"expected 1 to {SHOWN_MAX} characters and a boolean final")
                 message = TextIntent(text, final)
             case _:
                 message = None

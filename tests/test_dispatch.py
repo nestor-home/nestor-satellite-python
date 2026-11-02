@@ -2,7 +2,7 @@ import json
 from typing import Any
 
 from nestor_satellite import Behavior, Body, Expression, wire
-from nestor_satellite.dispatch import Dispatcher, Outcome
+from nestor_satellite.dispatch import Dispatcher
 
 
 class Recorder(Body):
@@ -50,11 +50,10 @@ def test_intents_reach_the_body_and_are_acknowledged_by_id() -> None:
     assert [(m["type"], m["payload"]["of"]) for m in sent] == [("ack", "a"), ("ack", "b"), ("ack", "c"), ("ack", "d")]
 
 
-def test_the_welcome_is_kept_and_the_link_reported_up_without_an_ack() -> None:
+def test_the_welcome_is_handed_back_without_an_ack() -> None:
     inbox, _, sent = dispatcher()
-    outcome = inbox.handle(raw("welcome", {"device_id": "tv", "room": "salon", "capabilities": ["audio.capture"]}))
-    assert outcome is Outcome.WELCOMED
-    assert inbox.welcome == wire.Welcome("tv", "salon", frozenset({"audio.capture"}))
+    welcome = inbox.handle(raw("welcome", {"device_id": "tv", "room": "salon", "capabilities": ["audio.capture"]}))
+    assert welcome == wire.Welcome("tv", "salon", frozenset({"audio.capture"}))
     assert not sent
 
 
@@ -81,8 +80,8 @@ def test_text_for_a_device_without_a_display_is_still_acknowledged() -> None:
 
 def test_off_contract_messages_are_dropped() -> None:
     inbox, body, sent = dispatcher()
-    assert inbox.handle("ping") is Outcome.NOTHING
-    assert inbox.handle(raw("intent.behavior", {"behavior": "dancing"})) is Outcome.NOTHING
+    assert inbox.handle("ping") is None
+    assert inbox.handle(raw("intent.behavior", {"behavior": "dancing"})) is None
     assert not body.calls and not sent
 
 
@@ -91,5 +90,5 @@ def test_the_default_body_ignores_everything() -> None:
     intents = [("intent.behavior", {"behavior": "idle"}), ("intent.expression", {"expression": "sigh"}),
                ("intent.beat", {}), ("intent.identify", {}), ("intent.text", {"text": "Bonjour."})]  # fmt: skip
     for kind, payload in intents:
-        assert inbox.handle(raw(kind, payload)) is Outcome.NOTHING
+        assert inbox.handle(raw(kind, payload)) is None
     Body().connected(True)
