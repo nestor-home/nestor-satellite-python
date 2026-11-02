@@ -7,7 +7,7 @@ from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
 from av import AudioFrame
 
 from nestor_satellite import RecordingSink, SilenceSource
-from nestor_satellite.audio import SourceTrack, play
+from nestor_satellite.webrtc import SourceTrack, play
 
 
 async def test_the_microphone_track_sends_20_ms_frames_in_real_time() -> None:

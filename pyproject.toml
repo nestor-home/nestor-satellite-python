@@ -5,18 +5,18 @@ build-backend = "uv_build"
 [project]
 name = "nestor-satellite"
 version = "0.3.0"
-description = "Python SDK to write Nestor satellite drivers: pairing, WebRTC audio and the nestor data channel."
+description = "Python SDK to write Nestor satellite drivers: pairing, the WebSocket link, text, and WebRTC audio as an extra."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Mathis Lambert" }]
 requires-python = ">=3.12"
 dependencies = [
-    "aiortc>=1.15",
     "fluent-runtime>=0.4.0",
     "httpx>=0.28.1",
+    "websockets>=15",
 ]
-keywords = ["nestor", "satellite", "voice assistant", "webrtc", "robotics"]
+keywords = ["nestor", "satellite", "voice assistant", "websocket", "webrtc", "robotics"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
@@ -29,9 +29,13 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+# Audio over WebRTC (aiortc, with PyAV): a microphone, a speaker, and the device code said aloud.
+voice = ["aiortc>=1.15"]
 # The machine's microphone and speaker (PortAudio). Without it, plug your own AudioSource/AudioSink.
 sounddevice = ["sounddevice>=0.5.2"]
+# Pairing URIs read from a camera: ZXing-C++ decodes, PyAV reads the camera.
 qr = [
+    "av>=14",
     "zxing-cpp>=3.1.1",
 ]
 
@@ -53,7 +57,7 @@ dev = [
     "pre-commit==4.7.0",
     "jsonschema>=4.26.0",
     # The server, for its black-box conformance suite and its schemas. Tests only: the SDK never imports it.
-    "nestor-home[voice]==0.5.0",
+    "nestor-home[voice]==0.6.0",
     "segno==1.6.6",
 ]
 

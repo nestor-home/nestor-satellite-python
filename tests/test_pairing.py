@@ -16,7 +16,7 @@ from typing import Any
 import httpx
 import pytest
 from fastapi import FastAPI
-from nestor.adapters.channels.voice.satellites.gateway import SatelliteGateway
+from nestor.adapters.channels.satellites.gateway import SatelliteGateway
 from nestor.modules.journal import Journal
 from nestor.modules.satellites import AttemptLimiter
 from nestor.modules.satellites import Device as ServerDevice
@@ -47,7 +47,7 @@ from .qr import blank, qr_frame
 
 CORE = "http://nestor.local:8471"
 DEVICE = Device("enceinte-salon", "raspberry-pi-4", "salon")
-MANIFEST = Manifest.of(DEVICE, "audio.capture")
+MANIFEST = Manifest.of(DEVICE, "vision.person_detection")
 EVERY_ENROLLMENT = (PairingMethod.INPUT, PairingMethod.PROVISIONING, PairingMethod.QR)
 
 
@@ -86,7 +86,7 @@ class Core(httpx.AsyncBaseTransport):
     def __init__(self, **options: Any) -> None:
         self.service = Service(Journal(MemoryEventLog()), **options)
         app = FastAPI()
-        SatelliteGateway(self.service, self._never_connected).install(app)
+        SatelliteGateway(self.service, on_link=self._never_connected).install(app)
         self.sent: list[tuple[str, dict[str, Any]]] = []
         self._app = httpx.ASGITransport(app)
         self.http = httpx.AsyncClient(transport=self, base_url=CORE)

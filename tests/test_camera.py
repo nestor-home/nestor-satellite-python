@@ -8,7 +8,7 @@ from typing import Any
 import av
 import pytest
 
-from nestor_satellite import AvCamera, Frame, camera, read_qr
+from nestor_satellite import AvCamera, Frame, read_qr
 
 from .qr import blank, qr_frame, y4m
 
@@ -71,7 +71,7 @@ class LiveCamera:
 
 
 async def test_a_live_camera_is_waited_for_until_it_has_an_image(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(camera.av, "open", lambda *_args, **_options: LiveCamera())
+    monkeypatch.setattr(av, "open", lambda *_args, **_options: LiveCamera())
     lens = AvCamera("0", format="avfoundation")
     await lens.start()
     frame = await lens.read()

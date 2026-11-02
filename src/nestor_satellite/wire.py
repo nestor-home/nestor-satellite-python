@@ -1,8 +1,8 @@
-"""Messages on the `nestor` data channel: one JSON envelope `{"type", "id", "at", "payload"}`.
+"""Messages on the link, one WebSocket text frame each: a JSON envelope `{"type", "id", "at", "payload"}`.
 
-The satellite sends `hello` first, then `ack`s and observations; the core sends `welcome` and
-`intent.*`. A message type this SDK does not know is ignored, so a newer core does not break an
-older driver; a known type with an invalid payload is a `ProtocolError`.
+The satellite sends `hello` first (its manifest and token), then `ack`s, observations and typed text;
+the core sends `welcome` and `intent.*`. A message type this SDK does not know is ignored, so a newer
+core does not break an older driver; a known type with an invalid payload is a `ProtocolError`.
 """
 
 import uuid
@@ -12,15 +12,16 @@ from typing import Any
 
 from nestor_satellite.protocol import Behavior, Expression, Manifest, ProtocolError
 
-SIGNALLING = "signalling"  # the WebRTC transport's own messages (peer left, renegotiation): not Nestor's
+TYPED_MAX = 4000  # characters a person types in one go (`input.text`)
+SHOWN_MAX = 16000  # characters of one message of the assistant (`intent.text`)
 
 
 def envelope(message_type: str, payload: dict[str, Any]) -> dict[str, Any]:
     return {"type": message_type, "id": uuid.uuid4().hex, "at": datetime.now(UTC).isoformat(), "payload": payload}
 
 
-def hello(manifest: Manifest) -> dict[str, Any]:
-    return envelope("hello", {"manifest": manifest.to_json()})
+def hello(manifest: Manifest, token: str) -> dict[str, Any]:
+    return envelope("hello", {"manifest": manifest.to_json(), "token": token})
 
 
 def ack(intent_id: str) -> dict[str, Any]:
@@ -35,6 +36,12 @@ def person_detected(count: int, confidence: float) -> dict[str, Any]:
 
 def speech_activity(active: bool) -> dict[str, Any]:
     return envelope("observation.speech.activity", {"active": bool(active)})
+
+
+def text_input(text: str) -> dict[str, Any]:
+    if not isinstance(text, str) or not 0 < len(text) <= TYPED_MAX:
+        raise ProtocolError(f"typed text holds 1 to {TYPED_MAX} characters")
+    return envelope("input.text", {"text": text})
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,7 +72,13 @@ class IdentifyIntent:
     pass
 
 
-type Intent = BehaviorIntent | ExpressionIntent | BeatIntent | IdentifyIntent
+@dataclass(frozen=True, slots=True)
+class TextIntent:
+    text: str
+    final: bool = True  # the last message of the assistant's turn
+
+
+type Intent = BehaviorIntent | ExpressionIntent | BeatIntent | IdentifyIntent | TextIntent
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,6 +107,11 @@ def parse(data: Any) -> Received:
                 message = BeatIntent()
             case "intent.identify":
                 message = IdentifyIntent()
+            case "intent.text":
+                text, final = payload["text"], payload.get("final", True)
+                if not isinstance(text, str) or not 0 < len(text) <= SHOWN_MAX or not isinstance(final, bool):
+                    raise ValueError(f"expected 1 to {SHOWN_MAX} characters and a boolean final")
+                message = TextIntent(text, final)
             case _:
                 message = None
     except (KeyError, TypeError, ValueError) as error:

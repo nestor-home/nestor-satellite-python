@@ -2,17 +2,11 @@
 
 `AudioSource` gives 20 ms chunks to send to the core (the microphone); `AudioSink` plays what the
 core says (the speaker). `nestor_satellite.devices` implements both with PortAudio; the doubles
-here serve tests and devices without one or the other.
+here serve tests and devices without one or the other. They travel over WebRTC
+(`nestor_satellite.webrtc`, the `voice` extra); these ports need nothing.
 """
 
-import asyncio
-import fractions
-import time
 from abc import ABC, abstractmethod
-from collections.abc import Callable
-
-from aiortc.mediastreams import MediaStreamError, MediaStreamTrack
-from av import AudioFrame, AudioResampler
 
 FRAME_S = 0.02
 
@@ -67,44 +61,3 @@ class RecordingSink(AudioSink):
 
     async def write(self, pcm: bytes) -> None:
         self.played += pcm
-
-
-class SourceTrack(MediaStreamTrack):
-    """An `AudioSource` as an outgoing WebRTC track, paced in real time."""
-
-    kind = "audio"
-
-    def __init__(self, source: AudioSource) -> None:
-        super().__init__()
-        self._source = source
-        self._samples = 0
-        self._started: float | None = None
-
-    async def recv(self) -> AudioFrame:
-        if self.readyState != "live":
-            raise MediaStreamError
-        rate = self._source.sample_rate
-        if self._started is None:
-            self._started = time.monotonic()
-        elif (wait := self._started + self._samples / rate - time.monotonic()) > 0:
-            await asyncio.sleep(wait)
-        pcm = await self._source.read()
-        frame = AudioFrame(format="s16", layout="mono", samples=len(pcm) // 2)
-        frame.planes[0].update(pcm)
-        frame.sample_rate, frame.pts, frame.time_base = rate, self._samples, fractions.Fraction(1, rate)
-        self._samples += len(pcm) // 2
-        return frame
-
-
-async def play(track: MediaStreamTrack, sink: AudioSink, *, on_frame: Callable[[], None] | None = None) -> None:
-    """Feed an incoming WebRTC track to `sink`, resampled to its rate, until the track ends."""
-    resampler = AudioResampler(format="s16", layout="mono", rate=sink.sample_rate)
-    while True:
-        try:
-            frame = await track.recv()
-        except MediaStreamError:
-            return
-        if on_frame is not None:
-            on_frame()
-        for mono in resampler.resample(frame):  # ty: ignore[invalid-argument-type]
-            await sink.write(bytes(mono.planes[0])[: mono.samples * 2])

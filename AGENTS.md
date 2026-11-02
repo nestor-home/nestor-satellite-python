@@ -24,12 +24,15 @@ src/nestor_satellite/
 ├── codes.py      enrollment codes (Crockford base32) and pairing URIs (nestor+http://…/?code=…)
 ├── pairing.py    Pairing: device code or enrollment code, Display / Voice ports, TokenStore (token and
 │                 refused code hashes, mode 600)
-├── speech.py     SpokenCode: the device code said from the recorded clips in voice/ (index.json, LICENSE)
-├── camera.py     Camera port, AvCamera (PyAV), read_qr (ZXing-C++, `qr` extra): enrollment.qr
+├── speech.py     SpokenCode: the device code said from the recorded clips in voice/ (`voice` extra)
+├── camera.py     Camera port, AvCamera (PyAV), read_qr (ZXing-C++), both in the `qr` extra: enrollment.qr
 ├── i18n.py       Messages: what people read and hear, from locales/<lang>/satellite.ftl (en, fr)
-├── client.py     Satellite: pairing, WebRTC connection, hello/welcome, acks, observations, reconnection
+├── client.py     Satellite: pairing, the WebSocket link (hello/welcome, acks, observations, text, close
+│                 codes, reconnection), audio offered once welcomed
+├── dispatch.py   Dispatcher: each message from the core to the body or the text display, acknowledged
 ├── body.py       Body: what a driver overrides to carry out intents (identify included)
-├── audio.py      AudioSource / AudioSink ports, doubles, WebRTC track adapters
+├── audio.py      AudioSource / AudioSink ports and doubles (no dependency)
+├── webrtc.py     WebRtcAudio, track adapters: audio over WebRTC (`voice` extra, aiortc)
 ├── devices.py    Microphone / Speaker through PortAudio (optional `sounddevice` extra)
 └── cli.py        nestor-satellite run
 scripts/          voice.py records voice/ (Kokoro), voice_bench.py measures it (Whisper)
@@ -59,9 +62,12 @@ tests/            behaviour tests, including the server's black-box conformance 
    scripts/voice.py` from `device-code-spoken`: change that sentence, record again, measure with
    `scripts/voice_bench.py`, then copy `voice/` to the TypeScript and Rust SDKs. Only voices whose
    licence allows redistribution, written in `voice/LICENSE`.
-8. **A method is declared only when the SDK carries it out**: `enrollment.qr` only with a `camera`
+8. **Voice is an extra.** The base package (pairing, link, text, intents, observations) never imports
+   aiortc or PyAV (tested): `webrtc.py` and `speech.py` are imported only when a source or a sink is
+   given. Text and audio capabilities follow from what the satellite is given, never declared by hand.
+9. **A method is declared only when the SDK carries it out**: `enrollment.qr` only with a `camera`
    the SDK reads QR codes from, `device_code.speech` only with a voice or a speaker.
-9. **Every sentence for people goes through the catalogues** (`locales/en`, `locales/fr`, same
+10. **Every sentence for people goes through the catalogues** (`locales/en`, `locales/fr`, same
    messages and variables, short, no em-dash). The core's English `detail` is never shown, only logged.
 
 ## Code conventions
