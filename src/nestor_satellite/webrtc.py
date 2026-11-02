@@ -84,12 +84,11 @@ class WebRtcAudio:
         """Offer, then exchange audio until the connection fails (returns) or is cancelled. `source`: the
         microphone, opened for this connection only (silence without one: the core's turn taking
         expects a stream); `sink`: where the core's voice is played (dropped without one)."""
+        microphone = source or SilenceSource()
+        await microphone.start()  # a microphone that cannot open fails the offer before any connection
         peer = RTCPeerConnection(RTCConfiguration(iceServers=self._ice))
         ended = asyncio.Event()
         players: set[asyncio.Task[None]] = set()
-        microphone = source or SilenceSource()
-        await microphone.start()
-        peer.addTrack(SourceTrack(microphone))
 
         @peer.on("track")
         def incoming(track: MediaStreamTrack) -> None:
@@ -101,6 +100,7 @@ class WebRtcAudio:
                 ended.set()
 
         try:
+            peer.addTrack(SourceTrack(microphone))
             await peer.setLocalDescription(await peer.createOffer())
             local = peer.localDescription
             response = await http.post(

@@ -389,3 +389,18 @@ async def test_failed_audio_is_offered_again_and_a_refused_token_pairs_again(
                     await asyncio.sleep(0.02)
     assert source.opened >= 2 and source.opened == source.closed, "the microphone, for each offer only"
     assert "Nestor no longer knows this device" in caplog.text
+
+
+async def test_a_microphone_that_cannot_open_leaves_no_connection_behind(monkeypatch: pytest.MonkeyPatch) -> None:
+    from nestor_satellite import webrtc
+
+    class Refused(SilenceSource):
+        async def start(self) -> None:
+            raise OSError("the microphone is busy")
+
+    peers: list[object] = []
+    monkeypatch.setattr(webrtc, "RTCPeerConnection", lambda *args, **kwargs: peers.append(args) or None)
+    async with httpx.AsyncClient(base_url="http://core") as http:
+        with pytest.raises(OSError, match="busy"):
+            await webrtc.WebRtcAudio().connect(http, "enceinte", "nst1_x", source=Refused(), sink=None)
+    assert not peers, "no peer connection is opened for a microphone that failed"

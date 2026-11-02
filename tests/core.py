@@ -49,7 +49,7 @@ class Core:
     async def serving(self) -> AsyncGenerator["Core"]:
         port = _free_port()
         server_ = DeviceServer(
-            host="127.0.0.1", port=port, routes=[SatelliteGateway(self.service, on_link=self._linked)]
+            host="127.0.0.1", port=port, gateway=SatelliteGateway(self.service, on_link=self._linked)
         )
 
         @server_.app.middleware("http")
