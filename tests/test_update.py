@@ -212,8 +212,9 @@ def test_pypi_takes_a_package_without_a_version() -> None:
         ({"Homepage": "https://nestorhome.dev", "Changelog": "https://github.com/x/releases"},
          "https://github.com/x/releases"),
         (None, "https://pypi.org/project/nestor-satellite/99.0.0/"),
+        ({"Changelog": "http://example.org/changes"}, "https://pypi.org/project/nestor-satellite/99.0.0/"),
     ],
-    ids=["its declared changelog", "its page on PyPI"],
+    ids=["its declared changelog", "its page on PyPI", "not https: its page on PyPI"],
 )  # fmt: skip
 async def test_pypi_gives_the_notes_of_the_newer_version(links: dict[str, str] | None, expected: str) -> None:
     updater = PypiUpdater("nestor-satellite", module="nestor_satellite", transport=_pypi({"99.0.0": [{}]}, links))

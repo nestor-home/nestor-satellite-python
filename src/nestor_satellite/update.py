@@ -46,7 +46,8 @@ class Updater(ABC):
         """Install `version` in place of the running one; raise when it fails, the running one kept."""
 
     def notes(self, version: str) -> str | None:
-        """An https address of what `version` changes, found with it at the source; `None` when unknown."""
+        """An https address (at most 512 characters) of what `version` changes, found with it at the
+        source; `None` when unknown."""
         return None
 
     def restart(self) -> None:
@@ -63,7 +64,7 @@ class Updates:
         self.found: str | None = None  # the newer version found at the source, reported to the core
         self._confirm_s, self._every_s = confirm_s, every_s
         self._send: Send | None = None
-        self._installing = False
+        self._installing: asyncio.Task[None] | None = None  # kept: the loop holds tasks only weakly
         self._previous: str | None = None  # set while this version, just installed, waits to be welcomed
         saved = self._read()
         if (target := saved.get("to")) is not None:
@@ -106,12 +107,11 @@ class Updates:
 
     def request(self, version: str) -> None:
         """A person asked for `version` (`intent.update`)."""
-        if self._installing or version != self.found or not _newer(version, self.running):
+        busy = self._installing is not None and not self._installing.done()
+        if busy or version != self.found or not _newer(version, self.running):
             logger.warning("ignoring a request to install %s: not the newer version found", version)
             return
-        self._installing = True
-        task = asyncio.ensure_future(self._install(version))
-        task.add_done_callback(lambda _: setattr(self, "_installing", False))
+        self._installing = asyncio.ensure_future(self._install(version))
 
     async def _install(self, version: str) -> None:
         self._report(UpdateState.INSTALLING, version)
@@ -146,8 +146,7 @@ class Updates:
 
     def _report(self, state: UpdateState, version: str | None = None) -> None:
         if self._send is not None:
-            notes = self.updater.notes(version) if version else None
-            self._send(wire.update_status(state, version, notes if notes and notes.startswith("https://") else None))
+            self._send(wire.update_status(state, version, self.updater.notes(version) if version else None))
 
     def _read(self) -> dict[str, Any]:
         try:

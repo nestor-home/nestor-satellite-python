@@ -3,11 +3,10 @@
     PypiUpdater("nestor-satellite[voice,sounddevice]", module="nestor_satellite")
 
 Newer versions are read from the package's PyPI page (pre-releases and yanked releases left out), with
-the address of their notes: the project's changelog or releases link when it declares one, else the
-version's page on PyPI. A
-version is installed into the running environment, with `uv pip` when uv is there, else pip; then a
-fresh interpreter imports `module` at that version. When it cannot, the running version is installed
-back and the update fails.
+the address of their notes: the project's https changelog or releases link when it declares one, else
+the version's page on PyPI. A version is installed into the running environment, with `uv pip` when
+uv is there, else pip; then a fresh interpreter imports `module` at that version. When it cannot, the
+running version is installed back and the update fails.
 """
 
 import asyncio
@@ -61,7 +60,7 @@ class PypiUpdater(Updater):
         if newest is None or newest <= Version(self.running):
             return None
         links = {str(k).lower(): v for k, v in ((page.get("info") or {}).get("project_urls") or {}).items()}
-        declared = next((links[k] for k in NOTES_LINKS if isinstance(links.get(k), str)), None)
+        declared = next((links[k] for k in NOTES_LINKS if _link(links.get(k))), None)
         self._notes[str(newest)] = declared or f"https://pypi.org/project/{self.name}/{newest}/"
         return str(newest)
 
@@ -107,6 +106,11 @@ def _version(text: str) -> Version | None:
         return Version(text)
     except InvalidVersion:
         return None
+
+
+def _link(url: object) -> bool:
+    """An address `update.status` can carry as notes."""
+    return isinstance(url, str) and url.startswith("https://") and len(url) <= 512 and " " not in url
 
 
 def _installable(files: object) -> bool:
