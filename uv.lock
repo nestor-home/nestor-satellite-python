@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -1358,7 +1358,7 @@ wheels = [
 
 [[package]]
 name = "nestor-home"
-version = "0.8.0"
+version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioimaplib" },
@@ -1376,9 +1376,9 @@ dependencies = [
     { name = "uvicorn" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/40/21/afe2b9991b5838ae1c3856072b667fb6d4617345c184df3ffacac30fe0e0/nestor_home-0.8.0.tar.gz", hash = "sha256:62d181cabfcfb521e62c782ff1ff4d417bf207b0851b170bf9fc9e2dcf653ebd", size = 1392270, upload-time = "2026-11-04T14:31:30Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1d/bc/804e22466d7707176a97fedc1f9415423b71326beb93d59add2986a263ce/nestor_home-0.8.1.tar.gz", hash = "sha256:d1d17a18f652e5fea5de355c29c8623e2c7912330dfff8dae311d905bd1133c1", size = 1392193, upload-time = "2026-11-04T16:01:51.665Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/42/e6/0ab216a9282e580d5de63099070aacc52aa5a16e555cdfd1eda424e9a147/nestor_home-0.8.0-py3-none-any.whl", hash = "sha256:378fc39266a579679bc30ac57f6c9fd650225c9c283f212697c659cbed44d758", size = 1589129, upload-time = "2026-11-04T14:31:28.407Z" },
+    { url = "https://files.pythonhosted.org/packages/68/45/52d1533fd9e40a28fe9a47e4a37001b6ff12eb3601c0b84776fd1d6c13bb/nestor_home-0.8.1-py3-none-any.whl", hash = "sha256:00b1f59a39341bea8df39fd34160dd33de8fef5066bc15f940c2c99e677d2978", size = 1589128, upload-time = "2026-11-04T16:01:50.194Z" },
 ]
 
 [package.optional-dependencies]
@@ -1438,7 +1438,7 @@ provides-extras = ["voice", "sounddevice", "qr"]
 [package.metadata.requires-dev]
 dev = [
     { name = "jsonschema", specifier = ">=4.26.0" },
-    { name = "nestor-home", extras = ["voice"], specifier = "==0.8.0" },
+    { name = "nestor-home", extras = ["voice"], specifier = "==0.8.1" },
     { name = "pre-commit", specifier = "==4.7.0" },
     { name = "pytest", specifier = "==9.2.0" },
     { name = "pytest-asyncio", specifier = "==1.4.1.post1" },
