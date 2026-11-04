@@ -23,6 +23,7 @@ from nestor.modules.satellites import Device as ServerDevice
 from nestor.modules.satellites import Manifest as ServerManifest
 from nestor.modules.satellites import Pairing as Service
 from nestor.modules.satellites import PairingMethod as ServerMethod
+from nestor.modules.satellites import Software as ServerSoftware
 from nestor.testing.journal import MemoryEventLog
 
 from nestor_satellite import (
@@ -201,7 +202,8 @@ async def test_a_refused_enrollment_code_is_said_never_sent_again_and_a_device_c
     if refusal != "unknown":
         code = await core.code()
         if refusal == "used":  # by another device
-            other = ServerManifest(ServerDevice("deja-la", "x", "salon"), pairing_methods=(ServerMethod.PROVISIONING,))
+            other = ServerManifest(ServerDevice("deja-la", "x", "salon"), pairing_methods=(ServerMethod.PROVISIONING,),
+                                   software=ServerSoftware("other", "1.0.0"))  # fmt: skip
             await core.service.request(other, enrollment_code=code, method=ServerMethod.PROVISIONING)
         else:
             [addition] = core.service.additions()

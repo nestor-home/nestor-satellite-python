@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -1393,6 +1393,7 @@ source = { editable = "." }
 dependencies = [
     { name = "fluent-runtime" },
     { name = "httpx" },
+    { name = "packaging" },
     { name = "websockets" },
 ]
 
@@ -1427,6 +1428,7 @@ requires-dist = [
     { name = "av", marker = "extra == 'qr'", specifier = ">=14" },
     { name = "fluent-runtime", specifier = ">=0.4.0" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "packaging", specifier = ">=24" },
     { name = "sounddevice", marker = "extra == 'sounddevice'", specifier = ">=0.5.2" },
     { name = "websockets", specifier = ">=15" },
     { name = "zxing-cpp", marker = "extra == 'qr'", specifier = ">=3.1.1" },

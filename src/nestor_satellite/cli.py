@@ -9,7 +9,9 @@ a Raspberry Pi with a USB speakerphone. With `--text`, each line typed on its st
 to Nestor and the answers are printed; `--no-voice` leaves the microphone and speaker out. Give it
 the pairing URI of an enrollment code made in Nestor (flag, or `NESTOR_PAIRING_URI`), or type in
 Nestor the pairing code it says on its speaker (and logs); with `--camera`, show it the QR code of a
-pairing URI. The token is then kept in `~/.config/nestor-satellite/<id>.json`.
+pairing URI. The token is then kept in `~/.config/nestor-satellite/<id>.json`. With `--managed`, a
+person can update it from Nestor: it installs the newer version from PyPI into the environment it
+runs from, then starts again with the same command (run it under a service manager all the same).
 """
 
 import argparse
@@ -62,6 +64,9 @@ def parse(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--camera",
         help="read QR codes of pairing URIs from this camera (FFmpeg device: 0 on macOS, /dev/video0 on Linux)",
     )
+    run.add_argument(
+        "--managed", action="store_true", help="a person can update it from Nestor (from PyPI, into this environment)"
+    )
     run.add_argument("-v", "--verbose", action="store_true")
     return parser.parse_args(argv)
 
@@ -75,6 +80,11 @@ def build(args: argparse.Namespace) -> Satellite:
                     "sink": Speaker(device=_device(args.output_device))}  # fmt: skip
     if args.text:
         options |= {"text_input": True, "text_display": _print}
+    if args.managed:
+        from nestor_satellite.pypi import PypiUpdater
+
+        extras = "[voice,sounddevice]" if args.voice else ""
+        options["updater"] = PypiUpdater(f"nestor-satellite{extras}", module="nestor_satellite")
     tokens = TokenStore(args.token_file or f"~/.config/nestor-satellite/{args.id}.json")
     return Satellite(
         args.core,

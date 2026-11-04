@@ -13,8 +13,9 @@ the QR code of a pairing URI. The manifest's `pairing_methods` follow from what 
 The link is one WebSocket that carries every message: `hello` (manifest and token) then `welcome`,
 intents (acknowledged), observations and text both ways. The capabilities for text and audio follow
 from what was given too: `text_display` declares `text.display`, `text_input` declares `text.input`,
-a `source` `audio.capture` and a `sink` `audio.playback`. Audio travels over WebRTC
-(`nestor_satellite.webrtc`, the `voice` extra), offered once the link is welcomed with audio allowed.
+a `source` `audio.capture` and a `sink` `audio.playback`, an `updater` `device.update`. Audio travels
+over WebRTC (`nestor_satellite.webrtc`, the `voice` extra), offered once the link is welcomed with
+audio allowed. Updates of the device's software are in `update`.
 """
 
 import asyncio
@@ -54,11 +55,13 @@ from nestor_satellite.protocol import (
     SPEECH_ACTIVITY,
     TEXT_DISPLAY,
     TEXT_INPUT,
+    UPDATE,
     Capability,
     Manifest,
     PairingMethod,
     ProtocolError,
 )
+from nestor_satellite.update import Updater, Updates
 
 if TYPE_CHECKING:
     from nestor_satellite.webrtc import WebRtcAudio
@@ -69,7 +72,7 @@ PING_S = 20.0  # the core pings this often; so does the satellite
 SILENCE_S = 60.0  # nothing heard for this long: the link is lost (L4)
 WELCOME_S = 15.0  # the core answers `hello` well within this (it closes a late one at 10 s)
 AUDIO = frozenset({AUDIO_CAPTURE, AUDIO_PLAYBACK})
-WIRED = frozenset({TEXT_INPUT, TEXT_DISPLAY, AUDIO_CAPTURE, AUDIO_PLAYBACK})  # declared from what is given
+WIRED = frozenset({TEXT_INPUT, TEXT_DISPLAY, AUDIO_CAPTURE, AUDIO_PLAYBACK, UPDATE})  # declared from what is given
 
 
 class Close(IntEnum):
@@ -100,6 +103,7 @@ class Satellite:
         display: Display | None = None,
         voice: Voice | None = None,
         camera: Camera | None = None,
+        updater: Updater | None = None,
         enrolls_by: Iterable[PairingMethod] = (),
         enrollment: str | None = None,
         locale: str | None = None,
@@ -120,6 +124,7 @@ class Satellite:
         `display`, `voice`: where a device code is presented (`device_code.display`, `device_code.speech`).
         Without either, a `sink` says it with the SDK's recorded voice.
         `camera`: QR codes of pairing URIs are read from it while pairing (`enrollment.qr`).
+        `updater`: how the software in `manifest.software` is updated when a person asks (`device.update`).
         `enrolls_by`: `PairingMethod.INPUT` when the driver can take a code typed on the device (`enroll`).
         `enrollment`: a pairing URI or an enrollment code from the device's configuration; by default
         `NESTOR_PAIRING_URI`, else `NESTOR_PAIRING_CODE`, from `environ` (the process environment).
@@ -129,7 +134,7 @@ class Satellite:
         if declared := sorted(manifest.names & WIRED):
             raise ValueError(
                 f"{', '.join(declared)} follow from what the satellite is given (text_display, text_input, "
-                "source, sink): do not declare them"
+                "source, sink, updater): do not declare them"
             )
         env = os.environ if environ is None else environ
         self.messages = Messages(locale, env)
@@ -147,7 +152,8 @@ class Satellite:
         wired = [
             name
             for name, given in ((TEXT_INPUT, text_input), (TEXT_DISPLAY, text_display is not None),
-                                (AUDIO_CAPTURE, source is not None), (AUDIO_PLAYBACK, sink is not None))
+                                (AUDIO_CAPTURE, source is not None), (AUDIO_PLAYBACK, sink is not None),
+                                (UPDATE, updater is not None))
             if given
         ]  # fmt: skip
         self.manifest = replace(
@@ -159,6 +165,11 @@ class Satellite:
         self._text_display = text_display
         self._source, self._sink = source, sink
         self._camera = camera
+        self.updates = (
+            Updates(updater, manifest.software.version, tokens.path.with_name(f"{tokens.path.stem}.update.json"))
+            if updater is not None
+            else None
+        )
         device = self.manifest.device.id
         self._pairing = Pairing(
             self.manifest,
@@ -184,6 +195,7 @@ class Satellite:
         if self._sink is not None:
             await self._sink.start()
         delay = self._backoff[0]
+        watching = asyncio.create_task(self.updates.watch()) if self.updates is not None else None
         try:
             async with httpx.AsyncClient(base_url=self.core, timeout=10, transport=self._transport) as http:
                 while True:
@@ -212,6 +224,8 @@ class Satellite:
                         logger.info("%s", self.messages("link-closed", seconds=seconds))
                     await asyncio.sleep(delay)
         finally:
+            if watching is not None:
+                watching.cancel()
             if self._sink is not None:
                 await self._sink.close()
 
@@ -295,7 +309,9 @@ class Satellite:
         """One link, until the core closes it or it is lost: how it was closed, and whether it was welcomed."""
         url = "ws" + self.core.removeprefix("http") + f"/satellites/{self.manifest.device.id}/link"
         outbox: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
-        dispatcher = Dispatcher(self.body, outbox.put_nowait, text_display=self._text_display)
+        updates = self.updates
+        dispatcher = Dispatcher(self.body, outbox.put_nowait, text_display=self._text_display,
+                                update=updates.request if updates is not None else None)  # fmt: skip
         tasks: list[asyncio.Task[Any]] = []
         refused = asyncio.Event()  # the core refused the token on the audio side
         welcomed = False
@@ -312,6 +328,10 @@ class Satellite:
                         waiting.reschedule(None)
                         welcomed, self.welcome, self._outbox = True, welcome, outbox
                         tasks.append(asyncio.create_task(_write(link, outbox)))
+                        if updates is not None and (
+                            reporting := updates.linked(welcome.capabilities, outbox.put_nowait)
+                        ):
+                            tasks.append(reporting)
                         if self._audio is not None and welcome.capabilities & AUDIO:
                             hearing = self._hear(http, token, welcome.capabilities, link, refused)
                             tasks.append(asyncio.create_task(hearing))
@@ -320,6 +340,8 @@ class Satellite:
                 pass
             finally:
                 self._outbox = None
+                if updates is not None:
+                    updates.unlinked()
                 for task in tasks:
                     task.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)

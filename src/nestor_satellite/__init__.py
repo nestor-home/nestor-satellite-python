@@ -1,5 +1,6 @@
 """Write a Nestor satellite in Python: pair with the core, hold its link, talk in writing, aloud
-(WebRTC audio, the `voice` extra) or both, carry out its intents and report observations, following
+(WebRTC audio, the `voice` extra) or both, carry out its intents, report observations and update
+itself when a person asks, following
 the `nestor.satellite/1` protocol."""
 
 from nestor_satellite.audio import AudioSink, AudioSource, RecordingSink, SilenceSource
@@ -28,6 +29,7 @@ from nestor_satellite.protocol import (
     SPEECH_ACTIVITY,
     TEXT_DISPLAY,
     TEXT_INPUT,
+    UPDATE,
     Behavior,
     Capability,
     Device,
@@ -35,7 +37,11 @@ from nestor_satellite.protocol import (
     Manifest,
     PairingMethod,
     ProtocolError,
+    Software,
+    UpdateState,
 )
+from nestor_satellite.pypi import PypiUpdater, UpdateFailed
+from nestor_satellite.update import Updater
 
 __all__ = [
     "AUDIO_CAPTURE",
@@ -50,6 +56,7 @@ __all__ = [
     "SPEECH_ACTIVITY",
     "TEXT_DISPLAY",
     "TEXT_INPUT",
+    "UPDATE",
     "AudioSink",
     "AudioSource",
     "AvCamera",
@@ -69,11 +76,16 @@ __all__ = [
     "PairingFailed",
     "PairingMethod",
     "ProtocolError",
+    "PypiUpdater",
     "RecordingSink",
     "Satellite",
     "SilenceSource",
+    "Software",
     "TextDisplay",
     "TokenStore",
+    "UpdateFailed",
+    "UpdateState",
+    "Updater",
     "Voice",
     "normalize_enrollment_code",
     "parse_pairing_uri",

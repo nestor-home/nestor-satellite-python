@@ -14,6 +14,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fluent-runtime>=0.4.0",
     "httpx>=0.28.1",
+    "packaging>=24",
     "websockets>=15",
 ]
 keywords = ["nestor", "satellite", "voice assistant", "websocket", "webrtc", "robotics"]

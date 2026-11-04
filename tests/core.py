@@ -78,7 +78,7 @@ class Core:
     async def next_link(self, timeout_s: float = 10.0) -> Link:
         return await asyncio.wait_for(self.links.get(), timeout_s)
 
-    async def _linked(self, socket: WebSocket, satellite: Paired, allowed: frozenset[str]) -> None:
+    async def _linked(self, socket: WebSocket, satellite: Paired, manifest: object, allowed: frozenset[str]) -> None:
         link = Link(socket, satellite, allowed)
         welcome = server.Welcome(device_id=satellite.id, room=satellite.room, capabilities=tuple(sorted(allowed)))
         await link.send(welcome)

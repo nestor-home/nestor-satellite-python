@@ -169,3 +169,11 @@ async def test_lines_typed_on_stdin_are_sent_and_answers_printed(
         assert said in caplog.text
     cli._print("Il est midi.", True)
     assert capsys.readouterr().out == "Il est midi.\n"
+
+
+def test_a_managed_command_can_be_updated_from_nestor(tmp_path: Path) -> None:
+    common = ["run", "--core", "http://nestor.local:8471", "--room", "salon", "--token-file", str(tmp_path / "t.json")]
+    managed = cli.build(cli.parse([*common, "--text", "--no-voice", "--managed"]))
+    assert "device.update" in managed.manifest.names
+    assert managed.manifest.to_json()["software"]["name"] == "nestor-satellite"
+    assert "device.update" not in cli.build(cli.parse([*common, "--text", "--no-voice"])).manifest.names
