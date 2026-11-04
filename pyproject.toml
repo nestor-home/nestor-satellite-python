@@ -14,6 +14,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fluent-runtime>=0.4.0",
     "httpx>=0.28.1",
+    "packaging>=24",
     "websockets>=15",
 ]
 keywords = ["nestor", "satellite", "voice assistant", "websocket", "webrtc", "robotics"]
@@ -57,7 +58,7 @@ dev = [
     "pre-commit==4.7.0",
     "jsonschema>=4.26.0",
     # The server, for its black-box conformance suite and its schemas. Tests only: the SDK never imports it.
-    "nestor-home[voice]==0.7.0",
+    "nestor-home[voice]==0.8.0",
     "segno==1.6.6",
 ]
 

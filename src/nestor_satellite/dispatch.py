@@ -1,5 +1,6 @@
-"""What the satellite does with each message from the core: hand intents to the body (and the
-assistant's words to the text display) and acknowledge them, hand the welcome back to the link."""
+"""What the satellite does with each message from the core: hand intents to the body (the assistant's
+words to the text display, an update to the updates) and acknowledge them, hand the welcome back to the
+link."""
 
 import json
 import logging
@@ -17,11 +18,17 @@ type TextDisplay = Callable[[str, bool], None]  # shows the assistant's words (t
 
 class Dispatcher:
     def __init__(
-        self, body: Body, reply: Callable[[dict[str, Any]], None], *, text_display: TextDisplay | None = None
+        self,
+        body: Body,
+        reply: Callable[[dict[str, Any]], None],
+        *,
+        text_display: TextDisplay | None = None,
+        update: Callable[[str], None] | None = None,
     ) -> None:
         self.body = body
         self._reply = reply
         self._text_display = text_display
+        self._update = update
 
     def handle(self, raw: str | bytes) -> wire.Welcome | None:
         """Carry out one message; the welcome is returned, everything else is handled here."""
@@ -45,6 +52,9 @@ class Dispatcher:
             case wire.TextIntent(text=text, final=final):
                 if self._text_display is not None:
                     self._text_display(text, final)
+            case wire.UpdateIntent(version=version):
+                if self._update is not None:
+                    self._update(version)
             case _:  # the last intent: a beat
                 self.body.beat()
         self._reply(wire.ack(received.id))

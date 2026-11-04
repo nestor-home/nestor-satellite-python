@@ -53,6 +53,13 @@ asyncio.run(satellite.run())  # pairs the first time, then stays connected and r
 The text and audio capabilities follow from what the satellite is given; the manifest declares the
 others (body, sensors).
 
+Updates from Nestor: run the command with `--managed` (under a service manager), or give a driver
+`updater=PypiUpdater("my-satellite", module="my_satellite")` and name its package in the manifest
+(`software=Software.of("my-satellite")`). The device finds newer versions on PyPI itself, installs
+one only when a person asks for it in Nestor, starts again on it, and goes back to the previous one
+if it is not welcomed within a minute. See
+[Updates](https://nestorhome.dev/docs/satellites/protocol/) in the protocol.
+
 The recorded voice that says device codes is shared under CC BY 4.0: see
 [`src/nestor_satellite/voice/LICENSE`](src/nestor_satellite/voice/LICENSE).
 

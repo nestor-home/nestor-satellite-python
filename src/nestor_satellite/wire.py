@@ -1,7 +1,7 @@
 """Messages on the link, one WebSocket text frame each: a JSON envelope `{"type", "id", "at", "payload"}`.
 
-The satellite sends `hello` first (its manifest and token), then `ack`s, observations and typed text;
-the core sends `welcome` and `intent.*`. A message type this SDK does not know is ignored, so a newer
+The satellite sends `hello` first (its manifest and token), then `ack`s, observations, typed text and
+`update.status`; the core sends `welcome` and `intent.*`. A message type this SDK does not know is ignored, so a newer
 core does not break an older driver; a known type with an invalid payload is a `ProtocolError`.
 """
 
@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from nestor_satellite.protocol import Behavior, Expression, Manifest, ProtocolError
+from nestor_satellite.protocol import Behavior, Expression, Manifest, ProtocolError, UpdateState
 
 TYPED_MAX = 4000  # characters a person types in one go (`input.text`)
 SHOWN_MAX = 16000  # characters of one message of the assistant (`intent.text`)
@@ -42,6 +42,16 @@ def text_input(text: str) -> dict[str, Any]:
     if not isinstance(text, str) or not 0 < len(text) <= TYPED_MAX:
         raise ProtocolError(f"typed text holds 1 to {TYPED_MAX} characters")
     return envelope("input.text", {"text": text})
+
+
+def update_status(state: UpdateState, version: str | None = None, notes: str | None = None) -> dict[str, Any]:
+    """`notes`: an https address of what `version` changes, for people (the core only shows it)."""
+    if (version is None) != (state is UpdateState.CURRENT) or (notes is not None and version is None):
+        raise ProtocolError("a version, and its notes, go with every update state but current, and only with them")
+    if notes is not None and not (notes.startswith("https://") and 9 <= len(notes) <= 512 and " " not in notes):
+        raise ProtocolError("notes are an https address of at most 512 characters")
+    payload = {"state": state.value} | ({"version": version} if version else {}) | ({"notes": notes} if notes else {})
+    return envelope("update.status", payload)
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,7 +88,12 @@ class TextIntent:
     final: bool = True  # the last message of the assistant's turn
 
 
-type Intent = BehaviorIntent | ExpressionIntent | BeatIntent | IdentifyIntent | TextIntent
+@dataclass(frozen=True, slots=True)
+class UpdateIntent:
+    version: str  # a person asks for it: installed only if it is the newer version the device found
+
+
+type Intent = BehaviorIntent | ExpressionIntent | BeatIntent | IdentifyIntent | TextIntent | UpdateIntent
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,6 +127,10 @@ def parse(data: Any) -> Received:
                 if not isinstance(text, str) or not 0 < len(text) <= SHOWN_MAX or not isinstance(final, bool):
                     raise ValueError(f"expected 1 to {SHOWN_MAX} characters and a boolean final")
                 message = TextIntent(text, final)
+            case "intent.update":
+                if not isinstance(payload["version"], str) or not 0 < len(payload["version"]) <= 64:
+                    raise ValueError("expected a version of 1 to 64 characters")
+                message = UpdateIntent(payload["version"])
             case _:
                 message = None
     except (KeyError, TypeError, ValueError) as error:

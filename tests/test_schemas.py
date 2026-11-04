@@ -20,6 +20,7 @@ from nestor_satellite import (
     Expression,
     Manifest,
     PairingMethod,
+    UpdateState,
     wire,
 )
 
@@ -68,6 +69,8 @@ def _validator(name: str) -> Any:
         wire.speech_activity(True),
         wire.text_input("Allume la lumière"),
         wire.text_input("x" * wire.TYPED_MAX),
+        wire.update_status(UpdateState.CURRENT),
+        wire.update_status(UpdateState.AVAILABLE, "0.6.0"),
     ],
     ids=lambda m: m["type"],
 )
@@ -89,8 +92,10 @@ def test_what_the_sdk_sends_follows_the_schema_and_the_server_reads_it(message: 
         (server.TextIntent(text="Il fait 19 °C."), wire.TextIntent("Il fait 19 °C.", True)),
         (server.TextIntent(text="Je regarde…", final=False), wire.TextIntent("Je regarde…", False)),
         (server.TextIntent(text="x" * wire.SHOWN_MAX), wire.TextIntent("x" * wire.SHOWN_MAX)),
+        (server.UpdateIntent(version="0.6.0"), wire.UpdateIntent("0.6.0")),
     ],
-    ids=["welcome", "behavior", "expression", "beat", "identify", "text", "text in progress", "longest text"],
+    ids=["welcome", "behavior", "expression", "beat", "identify", "text", "text in progress", "longest text",
+         "update"],
 )  # fmt: skip
 def test_the_sdk_reads_what_the_server_sends(sent: server.Message, expected: object) -> None:
     data = json.loads(json.dumps(server.encode(sent, id="m-1")))

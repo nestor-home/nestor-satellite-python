@@ -19,7 +19,10 @@ from nestor_satellite import (
     Satellite,
     SilenceSource,
     TokenStore,
+    Updater,
 )
+
+from .test_update import Source
 
 ENGLISH = FluentLocalizer(catalogue_dirs(["nestor"]))  # the suite's checks, as its report names them
 
@@ -50,8 +53,17 @@ class Driver:
     """A satellite built only with the SDK, as the suite launches it: a fresh device per scenario.
     `voice`: with a microphone and a speaker; `text`: with a text display and typing."""
 
-    def __init__(self, manifest: Manifest, *, voice: bool = False, text: bool = False, stale_token: bool = False):
+    def __init__(
+        self,
+        manifest: Manifest,
+        *,
+        voice: bool = False,
+        text: bool = False,
+        stale_token: bool = False,
+        updater: Updater | None = None,
+    ):
         self.manifest, self.voice, self.text, self.stale_token = manifest, voice, text, stale_token
+        self.updater = updater
         self.sink = RecordingSink()
         self.shown: list[str] = []
         self.satellite: Satellite | None = None
@@ -68,15 +80,17 @@ class Driver:
             {"text_display": lambda shown, _final: self.shown.append(shown), "text_input": True} if self.text else {}
         )
         self.satellite = Satellite(launch.url, self.manifest, tokens=tokens, body=self.body,
-                                   enrollment=launch.pairing_uri, environ={}, poll_s=0.1, **audio, **text)  # fmt: skip
+                                   enrollment=launch.pairing_uri, environ={}, poll_s=0.1, updater=self.updater,
+                                   **audio, **text)  # fmt: skip
         await self.satellite.run()
 
 
 @pytest.mark.parametrize(
     "driver",
     [lambda: Driver(ROBOT, voice=True), lambda: Driver(SENSOR), lambda: Driver(SCREEN, text=True),
-     lambda: Driver(SCREEN, voice=True, text=True)],
-    ids=["robot that can identify", "sensor without audio", "screen and keyboard", "voice and text"],
+     lambda: Driver(SCREEN, voice=True, text=True), lambda: Driver(SCREEN, text=True, updater=Source())],
+    ids=["robot that can identify", "sensor without audio", "screen and keyboard", "voice and text",
+         "updates itself"],
 )  # fmt: skip
 async def test_a_satellite_written_with_the_sdk_conforms(driver: object) -> None:
     device: Driver = driver()  # ty: ignore[call-non-callable]
@@ -98,6 +112,8 @@ async def test_a_satellite_written_with_the_sdk_conforms(driver: object) -> None
     assert ("Hello." in device.shown) is device.text, "the core's words reached the display"
     if device.voice:
         assert "offers no audio when audio is not allowed (A1)" in checks
+    updates = {"reports where its software stands (U1)", "never installs a version it did not report (U2)"}
+    assert (updates <= checks) is (device.updater is not None), checks
     assert device.body.sent[:2] == ([True, True] if PERSON_DETECTION in names else []), "and it was valid"
 
 

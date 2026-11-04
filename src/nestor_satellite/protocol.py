@@ -12,7 +12,7 @@ from importlib.metadata import version
 from typing import Any
 
 PROTOCOL = "nestor.satellite/1"
-SDK = "nestor-satellite-python"
+DISTRIBUTION = "nestor-satellite"  # this SDK's package
 
 # Capabilities the core knows today; a driver may declare others (`family.feature`).
 TEXT_INPUT = "text.input"  # it sends what a person typed
@@ -22,6 +22,7 @@ AUDIO_PLAYBACK = "audio.playback"
 EXPRESSION = "expression.emotion"
 HEAD_MOTION = "motion.head"
 IDENTIFY = "device.identify"  # it can make itself noticed (blink, wiggle, chime): an aid, never a proof
+UPDATE = "device.update"  # it installs a newer version of its own software, on a person's request
 PERSON_DETECTION = "vision.person_detection"
 SPEECH_ACTIVITY = "audio.speech_activity"
 
@@ -47,6 +48,15 @@ class Expression(StrEnum):
     WHISPER = "whisper"
     EXCITED = "excited"
     AHEM = "ahem"
+
+
+class UpdateState(StrEnum):
+    """Where the device's own software stands (`update.status`)."""
+
+    CURRENT = "current"  # nothing newer at its source
+    AVAILABLE = "available"  # a newer version can be installed
+    INSTALLING = "installing"  # it installs that version, then starts again on it
+    FAILED = "failed"  # that version did not install or did not start: it runs the one it ran
 
 
 class PairingMethod(StrEnum):
@@ -82,6 +92,23 @@ class Device:
 
 
 @dataclass(frozen=True, slots=True)
+class Software:
+    """What the device runs: its package, as named where it is installed from, and its version."""
+
+    name: str
+    version: str
+
+    def __post_init__(self) -> None:
+        if not 0 < len(self.name) <= 64 or not 0 < len(self.version) <= 64:
+            raise ProtocolError("a software name and version are 1 to 64 characters")
+
+    @classmethod
+    def of(cls, distribution: str) -> "Software":
+        """An installed Python package, at the version installed."""
+        return cls(distribution, version(distribution))
+
+
+@dataclass(frozen=True, slots=True)
 class Capability:
     name: str
     params: Mapping[str, Any] = field(default_factory=dict)  # e.g. {"formats": ["opus/48000"]}
@@ -93,12 +120,14 @@ class Capability:
 
 @dataclass(frozen=True, slots=True)
 class Manifest:
-    """What the device says about itself. A `Satellite` sets `pairing_methods`, and the text and audio
-    capabilities, from the outputs and inputs it was given: a driver declares the others only."""
+    """What the device says about itself. A `Satellite` sets `pairing_methods`, and the text, audio and
+    update capabilities, from what it was given: a driver declares the others only. `software` is this
+    SDK unless the driver names its own package (`Software.of("nestor-reachy")`)."""
 
     device: Device
     capabilities: tuple[Capability, ...] = ()
     pairing_methods: tuple[PairingMethod, ...] = (PairingMethod.PROVISIONING,)
+    software: Software = field(default_factory=lambda: Software.of(DISTRIBUTION))
 
     def __post_init__(self) -> None:
         if len({c.name for c in self.capabilities}) != len(self.capabilities):
@@ -119,7 +148,7 @@ class Manifest:
         return {
             "protocol": PROTOCOL,
             "device": device | ({"brand": self.device.brand} if self.device.brand else {}),
-            "sdk": {"name": SDK, "version": version("nestor-satellite")},
+            "software": {"name": self.software.name, "version": self.software.version},
             "capabilities": [{"name": c.name, **c.params} for c in self.capabilities],
             "pairing_methods": [m.value for m in self.pairing_methods],
         }
