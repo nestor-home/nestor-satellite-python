@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0](https://github.com/nestor-home/nestor-satellite-python/compare/v0.4.0...v0.5.0) (2026-11-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* name the software a satellite runs, and update it on request ([#26](https://github.com/nestor-home/nestor-satellite-python/issues/26))
+
+### Features
+
+* name the software a satellite runs, and update it on request ([#26](https://github.com/nestor-home/nestor-satellite-python/issues/26)) ([194e5a4](https://github.com/nestor-home/nestor-satellite-python/commit/194e5a46aa8f218c2fcbb79fc69e8327ea0c8ab7))
+
 ## [0.4.0](https://github.com/nestor-home/nestor-satellite-python/compare/v0.3.0...v0.4.0) (2026-11-02)
 
 
