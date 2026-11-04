@@ -44,10 +44,14 @@ def text_input(text: str) -> dict[str, Any]:
     return envelope("input.text", {"text": text})
 
 
-def update_status(state: UpdateState, version: str | None = None) -> dict[str, Any]:
-    if (version is None) != (state is UpdateState.CURRENT):
-        raise ProtocolError("a version goes with every update state but current, and only with them")
-    return envelope("update.status", {"state": state.value} | ({"version": version} if version else {}))
+def update_status(state: UpdateState, version: str | None = None, notes: str | None = None) -> dict[str, Any]:
+    """`notes`: an https address of what `version` changes, for people (the core only shows it)."""
+    if (version is None) != (state is UpdateState.CURRENT) or (notes is not None and version is None):
+        raise ProtocolError("a version, and its notes, go with every update state but current, and only with them")
+    if notes is not None and not (notes.startswith("https://") and 9 <= len(notes) <= 512 and " " not in notes):
+        raise ProtocolError("notes are an https address of at most 512 characters")
+    payload = {"state": state.value} | ({"version": version} if version else {}) | ({"notes": notes} if notes else {})
+    return envelope("update.status", payload)
 
 
 @dataclass(frozen=True, slots=True)

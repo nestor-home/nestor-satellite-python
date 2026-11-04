@@ -159,10 +159,10 @@ async def test_an_install_that_did_not_take_is_reported_failed(tmp_path: Path) -
     assert [m["payload"] for m in sent] == [{"state": "failed", "version": "0.6.0"}]
 
 
-def _pypi(releases: dict[str, list[dict[str, Any]]]) -> httpx.MockTransport:
+def _pypi(releases: dict[str, list[dict[str, Any]]], links: dict[str, str] | None = None) -> httpx.MockTransport:
     def answer(request: httpx.Request) -> httpx.Response:
         assert request.url == "https://pypi.org/pypi/nestor-satellite/json"
-        return httpx.Response(200, json={"releases": releases})
+        return httpx.Response(200, json={"releases": releases, "info": {"project_urls": links}})
 
     return httpx.MockTransport(answer)
 
@@ -204,3 +204,35 @@ async def test_pypi_installs_the_running_version_back_when_the_new_one_does_not_
 def test_pypi_takes_a_package_without_a_version() -> None:
     with pytest.raises(ValueError, match="no version"):
         PypiUpdater("nestor-satellite==1.0", module="nestor_satellite")
+
+
+@pytest.mark.parametrize(
+    ("links", "expected"),
+    [
+        ({"Homepage": "https://nestorhome.dev", "Changelog": "https://github.com/x/releases"},
+         "https://github.com/x/releases"),
+        (None, "https://pypi.org/project/nestor-satellite/99.0.0/"),
+    ],
+    ids=["its declared changelog", "its page on PyPI"],
+)  # fmt: skip
+async def test_pypi_gives_the_notes_of_the_newer_version(links: dict[str, str] | None, expected: str) -> None:
+    updater = PypiUpdater("nestor-satellite", module="nestor_satellite", transport=_pypi({"99.0.0": [{}]}, links))
+    assert await updater.newer() == "99.0.0"
+    assert updater.notes("99.0.0") == expected and updater.notes("1.0.0") is None
+
+
+class Noted(Source):
+    def notes(self, version: str) -> str | None:
+        return f"https://example.org/notes/{version}"
+
+
+async def test_the_notes_go_with_the_newer_version_reported(tmp_path: Path) -> None:
+    updates = Updates(Noted(), RUNNING, tmp_path / "update.json")
+    sent: list[dict[str, Any]] = []
+    task = updates.linked(frozenset({UPDATE}), sent.append)
+    await asyncio.sleep(0.05)
+    assert task is not None
+    task.cancel()
+    assert [m["payload"] for m in sent] == [
+        {"state": "available", "version": "0.6.0", "notes": "https://example.org/notes/0.6.0"}
+    ]

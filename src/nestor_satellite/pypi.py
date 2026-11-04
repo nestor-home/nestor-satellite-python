@@ -2,7 +2,9 @@
 
     PypiUpdater("nestor-satellite[voice,sounddevice]", module="nestor_satellite")
 
-Newer versions are read from the package's PyPI page (pre-releases and yanked releases left out). A
+Newer versions are read from the package's PyPI page (pre-releases and yanked releases left out), with
+the address of their notes: the project's changelog or releases link when it declares one, else the
+version's page on PyPI. A
 version is installed into the running environment, with `uv pip` when uv is there, else pip; then a
 fresh interpreter imports `module` at that version. When it cannot, the running version is installed
 back and the update fails.
@@ -20,6 +22,7 @@ from packaging.version import InvalidVersion, Version
 from nestor_satellite.update import Updater
 
 INDEX = "https://pypi.org/pypi"
+NOTES_LINKS = ("changelog", "release notes", "releases", "changes")  # project URL labels, lowercased
 
 
 class UpdateFailed(RuntimeError):
@@ -45,15 +48,25 @@ class PypiUpdater(Updater):
         self._extras = f"[{','.join(sorted(parsed.extras))}]" if parsed.extras else ""
         self.running = importlib.metadata.version(self.name)
         self._index, self._timeout_s, self._transport = index.rstrip("/"), timeout_s, transport
+        self._notes: dict[str, str] = {}
 
     async def newer(self) -> str | None:
         async with httpx.AsyncClient(timeout=15, transport=self._transport) as http:
             response = await http.get(f"{self._index}/{self.name}/json")
             response.raise_for_status()
-            releases = response.json()["releases"]
+            page = response.json()
+        releases = page["releases"]
         versions = [v for v in (_version(k) for k, files in releases.items() if _installable(files)) if v]
         newest = max((v for v in versions if not v.is_prerelease), default=None)
-        return str(newest) if newest is not None and newest > Version(self.running) else None
+        if newest is None or newest <= Version(self.running):
+            return None
+        links = {str(k).lower(): v for k, v in ((page.get("info") or {}).get("project_urls") or {}).items()}
+        declared = next((links[k] for k in NOTES_LINKS if isinstance(links.get(k), str)), None)
+        self._notes[str(newest)] = declared or f"https://pypi.org/project/{self.name}/{newest}/"
+        return str(newest)
+
+    def notes(self, version: str) -> str | None:
+        return self._notes.get(version)
 
     async def install(self, version: str) -> None:
         if not await self._pip(version) or not await self._imports(version):

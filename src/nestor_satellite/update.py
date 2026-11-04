@@ -45,6 +45,10 @@ class Updater(ABC):
     async def install(self, version: str) -> None:
         """Install `version` in place of the running one; raise when it fails, the running one kept."""
 
+    def notes(self, version: str) -> str | None:
+        """An https address of what `version` changes, found with it at the source; `None` when unknown."""
+        return None
+
     def restart(self) -> None:
         """Start the process again, on the version now installed, with the same command."""
         os.execv(sys.executable, sys.orig_argv)
@@ -142,7 +146,8 @@ class Updates:
 
     def _report(self, state: UpdateState, version: str | None = None) -> None:
         if self._send is not None:
-            self._send(wire.update_status(state, version))
+            notes = self.updater.notes(version) if version else None
+            self._send(wire.update_status(state, version, notes if notes and notes.startswith("https://") else None))
 
     def _read(self) -> dict[str, Any]:
         try:
