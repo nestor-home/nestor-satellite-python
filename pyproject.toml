@@ -54,7 +54,7 @@ dev = [
     "pytest-asyncio==1.5.0",
     "pytest-cov==7.1.0",
     "ruff==0.17.5",
-    "ty==0.0.101",
+    "ty==0.0.104",
     "pre-commit==4.7.0",
     "jsonschema>=4.26.0",
     # The server, for its black-box conformance suite and its schemas. Tests only: the SDK never imports it.
