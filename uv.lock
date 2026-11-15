@@ -1267,7 +1267,7 @@ wheels = [
 
 [[package]]
 name = "nestor-home"
-version = "0.12.0"
+version = "0.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioimaplib" },
@@ -1277,6 +1277,7 @@ dependencies = [
     { name = "httpx" },
     { name = "mcp" },
     { name = "pydantic" },
+    { name = "pypdf" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "pyyaml" },
@@ -1285,9 +1286,9 @@ dependencies = [
     { name = "uvicorn" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ae/eb/1c200d592cf9a454490774c50a0e24c77951809b57f7608b6412e57278bf/nestor_home-0.12.0.tar.gz", hash = "sha256:a572b39e0defe2c03a05fb9b901535b120b7735e39e597953652915fb7be6046", size = 1778799, upload-time = "2026-11-12T14:44:31.787Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e0/f9/2c6f76791587c48667809b656078c2b50f564fa3d4ee676d8084b7ad9524/nestor_home-0.13.0.tar.gz", hash = "sha256:09a55072fade84986440cdc03661f288f8dcedbade711e632040c71189524f0c", size = 1940359, upload-time = "2026-11-15T13:08:11.025Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/51/4f/5cf7085d8a8061f20ba6e818086dd1b2690d0842994226b2e09252d9c767/nestor_home-0.12.0-py3-none-any.whl", hash = "sha256:d8e8bdf093aa47012d65b887868b6476087547417aca371b274d990966bd6aea", size = 2021577, upload-time = "2026-11-12T14:44:30.393Z" },
+    { url = "https://files.pythonhosted.org/packages/31/f9/3e8f0119010e1346e34e1d5e4f89cdb1c6e77d69a9664bdd1e320a6c4e64/nestor_home-0.13.0-py3-none-any.whl", hash = "sha256:dd013858f2b3c21ee3c2fa6d397c2c19c60fe54c3ecc3b6f2562d6f63f29df40", size = 2256901, upload-time = "2026-11-15T13:08:09.695Z" },
 ]
 
 [package.optional-dependencies]
@@ -1347,7 +1348,7 @@ provides-extras = ["voice", "sounddevice", "qr"]
 [package.metadata.requires-dev]
 dev = [
     { name = "jsonschema", specifier = ">=4.26.0" },
-    { name = "nestor-home", extras = ["voice"], specifier = "==0.12.0" },
+    { name = "nestor-home", extras = ["voice"], specifier = "==0.13.0" },
     { name = "pre-commit", specifier = "==4.7.0" },
     { name = "pytest", specifier = "==9.2.0" },
     { name = "pytest-asyncio", specifier = "==1.5.0" },
@@ -2026,6 +2027,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/3f/e8/7325d258199b159eb2c03fe32107533e2832e70e63f4fb88a6aa00023201/pyopenssl-26.4.0.tar.gz", hash = "sha256:28dfcce0162b9211413e26dfbfdf1d24317fbeba18fc93c12400a1856b2a0bc7", size = 182046, upload-time = "2026-08-01T19:50:50.512Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/51/ad/2cf6d3fa2fae5c79e1ed9960c0d42badd0f94d81dd12b50604cdc839e648/pyopenssl-26.4.0-py3-none-any.whl", hash = "sha256:f0eb0cb2d581d3ad2b9c489468485e7f2ab6727d08401bcf9d824c3caddf3c1c", size = 56026, upload-time = "2026-08-01T19:50:48.94Z" },
+]
+
+[[package]]
+name = "pypdf"
+version = "7.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/60/d3/367aa9baefaededd3321cde46bbcb9f008bb51cef3a6b745608352a99534/pypdf-7.1.0.tar.gz", hash = "sha256:ca3fa902369e98a6d2cb7b56396de902b72ef9bb3c1e8706c1bfc7d8bd0cf0d7", size = 7215190, upload-time = "2026-11-13T12:23:18.629Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ed/4c/d19f91b743c8579b67e3d8b001e095745dec5bb13a9b4b9eadc235a85d9e/pypdf-7.1.0-py3-none-any.whl", hash = "sha256:47cca6b24bdcf4c4d65b5f7b8b972535c61710a061261e737688777cfd9a7bfb", size = 418698, upload-time = "2026-11-13T12:23:16.777Z" },
 ]
 
 [[package]]
