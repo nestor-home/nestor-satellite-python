@@ -297,7 +297,7 @@ async def home() -> AsyncGenerator[tuple[MediaSessions, Service, MemoryBlobStore
 async def test_a_person_watches_calls_and_takes_a_picture_through_the_satellite_on_the_core(tmp_path: Path) -> None:
     """A core without a voice: the device offers none, and its microphone and speaker serve the call."""
     requests = Requests()
-    owner = Viewer(account_id="a-mathis", person=None, owner=True, signed_in="s-1")
+    owner = Viewer(account_id="a-mathis", person=None, may=frozenset(Purpose), everywhere=frozenset(Purpose))
     shown: list[bool] = []
     sink = RecordingSink()
     async with home() as (media, pairing, blobs, url):
@@ -307,12 +307,12 @@ async def test_a_person_watches_calls_and_takes_a_picture_through_the_satellite_
                               source=SilenceSource(), sink=sink, on_media=shown.append, environ={},
                               enrollment=pairing_uri(url, started.code), poll_s=0.05, transport=requests)  # fmt: skip
         async with running(satellite):
-            await until(lambda: media.linked(DEVICE.id) is not None)
+            await until(lambda: any(offer.linked for offer in media.offers(owner)))
             watching = Browser(call=False)
             watched = await media.open(DEVICE.id, Purpose.VIEW, owner, await watching.offer())
             await watching.answered(watched.answer)
             await until(lambda: watching.frames.count("video") > 5)
-            await media.close_session(watched.session_id, MediaEnd.CLOSED)
+            await media.close_session(watched.id, MediaEnd.CLOSED)
             await until(lambda: shown == [True, False])
 
             calling = Browser(call=True)
@@ -320,11 +320,11 @@ async def test_a_person_watches_calls_and_takes_a_picture_through_the_satellite_
             await calling.answered(called.answer)
             assert (called.video, called.audio) == (True, True)
             await until(lambda: max(sink.played, default=0) > 0 and "audio" in calling.frames, timeout_s=15)
-            await media.close_session(called.session_id, MediaEnd.CLOSED)
+            await media.close_session(called.id, MediaEnd.CLOSED)
             await until(lambda: shown == [True, False] * 2)
 
-            taken = await media.snapshot(DEVICE.id, owner)
-            picture = await blobs.get(taken.blob.digest)
+            taken, picture = await media.snapshot(DEVICE.id, owner)
+            assert await blobs.get(taken.blob.digest) == picture, "kept"
     assert picture[:2] == b"\xff\xd8", "a JPEG"
     assert not [path for path in requests.paths if path.endswith("/audio")], "no voice offered to a core without one"
     assert json.dumps(shown) == "[true, false, true, false, true, false]"
