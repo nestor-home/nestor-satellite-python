@@ -71,6 +71,7 @@ def _validator(name: str) -> Any:
         wire.text_input("x" * wire.TYPED_MAX),
         wire.update_status(UpdateState.CURRENT),
         wire.update_status(UpdateState.AVAILABLE, "0.6.0"),
+        wire.snapshot("intent-1", b"\xff\xd8 a picture \xff\xd9"),
     ],
     ids=lambda m: m["type"],
 )
@@ -93,9 +94,13 @@ def test_what_the_sdk_sends_follows_the_schema_and_the_server_reads_it(message: 
         (server.TextIntent(text="Je regarde…", final=False), wire.TextIntent("Je regarde…", False)),
         (server.TextIntent(text="x" * wire.SHOWN_MAX), wire.TextIntent("x" * wire.SHOWN_MAX)),
         (server.UpdateIntent(version="0.6.0"), wire.UpdateIntent("0.6.0")),
+        (server.MediaOpenIntent(session="s" * 64, video=True, audio=False, max_s=3600),
+         wire.MediaOpenIntent("s" * 64, True, False, 3600)),
+        (server.MediaCloseIntent(session="s-1"), wire.MediaCloseIntent("s-1")),
+        (server.SnapshotIntent(), wire.SnapshotIntent()),
     ],
     ids=["welcome", "behavior", "expression", "beat", "identify", "text", "text in progress", "longest text",
-         "update"],
+         "update", "media session", "end of a session", "still picture"],
 )  # fmt: skip
 def test_the_sdk_reads_what_the_server_sends(sent: server.Message, expected: object) -> None:
     data = json.loads(json.dumps(server.encode(sent, id="m-1")))

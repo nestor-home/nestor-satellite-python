@@ -9,9 +9,11 @@ a Raspberry Pi with a USB speakerphone. With `--text`, each line typed on its st
 to Nestor and the answers are printed; `--no-voice` leaves the microphone and speaker out. Give it
 the pairing URI of an enrollment code made in Nestor (flag, or `NESTOR_PAIRING_URI`), or type in
 Nestor the pairing code it says on its speaker (and logs); with `--camera`, show it the QR code of a
-pairing URI. The token is then kept in `~/.config/nestor-satellite/<id>.json`. With `--managed`, a
-person can update it from Nestor: it installs the newer version from PyPI into the environment it
-runs from, then starts again with the same command (run it under a service manager all the same).
+pairing URI. With `--camera` (`pip install 'nestor-satellite[video,qr]'`), the people allowed to can
+also watch through it from Nestor, and with the microphone and speaker call through it. The token is
+then kept in `~/.config/nestor-satellite/<id>.json`. With `--managed`, a person can update it from
+Nestor: it installs the newer version from PyPI into the environment it runs from, then starts again
+with the same command (run it under a service manager all the same).
 """
 
 import argparse
@@ -62,7 +64,8 @@ def parse(argv: Sequence[str] | None = None) -> argparse.Namespace:
     run.add_argument("--output-device", help="PortAudio output device (name or index)")
     run.add_argument(
         "--camera",
-        help="read QR codes of pairing URIs from this camera (FFmpeg device: 0 on macOS, /dev/video0 on Linux)",
+        help="film with this camera when a person opens a session, and read QR codes of pairing URIs from it "
+        "(FFmpeg device: 0 on macOS, /dev/video0 on Linux)",
     )
     run.add_argument(
         "--managed", action="store_true", help="a person can update it from Nestor (from PyPI, into this environment)"

@@ -15,6 +15,7 @@ from nestor_satellite import (
     Body,
     Device,
     Manifest,
+    PatternCamera,
     RecordingSink,
     Satellite,
     SilenceSource,
@@ -29,6 +30,7 @@ ENGLISH = FluentLocalizer(catalogue_dirs(["nestor"]))  # the suite's checks, as 
 ROBOT = Manifest.of(Device("reachy-salon", "reachy-mini", "salon"), EXPRESSION, HEAD_MOTION, IDENTIFY)
 SENSOR = Manifest.of(Device("capteur-entree", "esp32", "entree"), PERSON_DETECTION)
 SCREEN = Manifest.of(Device("ecran-bureau", "tablet", "bureau"), IDENTIFY)
+CAMERA = Manifest.of(Device("camera-entree", "raspberry-pi-zero", "entree"))
 
 
 class Watcher(Body):
@@ -61,9 +63,12 @@ class Driver:
         text: bool = False,
         stale_token: bool = False,
         updater: Updater | None = None,
+        camera: bool = False,
     ):
         self.manifest, self.voice, self.text, self.stale_token = manifest, voice, text, stale_token
         self.updater = updater
+        self.camera = camera
+        self.indicated: list[bool] = []
         self.sink = RecordingSink()
         self.shown: list[str] = []
         self.satellite: Satellite | None = None
@@ -79,18 +84,20 @@ class Driver:
         text: dict[str, Any] = (
             {"text_display": lambda shown, _final: self.shown.append(shown), "text_input": True} if self.text else {}
         )
+        media: dict[str, Any] = {"camera": PatternCamera(), "on_media": self.indicated.append} if self.camera else {}
         self.satellite = Satellite(launch.url, self.manifest, tokens=tokens, body=self.body,
                                    enrollment=launch.pairing_uri, environ={}, poll_s=0.1, updater=self.updater,
-                                   **audio, **text)  # fmt: skip
+                                   **audio, **text, **media)  # fmt: skip
         await self.satellite.run()
 
 
 @pytest.mark.parametrize(
     "driver",
     [lambda: Driver(ROBOT, voice=True), lambda: Driver(SENSOR), lambda: Driver(SCREEN, text=True),
-     lambda: Driver(SCREEN, voice=True, text=True), lambda: Driver(SCREEN, text=True, updater=Source())],
+     lambda: Driver(SCREEN, voice=True, text=True), lambda: Driver(SCREEN, text=True, updater=Source()),
+     lambda: Driver(CAMERA, voice=True, camera=True)],
     ids=["robot that can identify", "sensor without audio", "screen and keyboard", "voice and text",
-         "updates itself"],
+         "updates itself", "camera that takes calls"],
 )  # fmt: skip
 async def test_a_satellite_written_with_the_sdk_conforms(driver: object) -> None:
     device: Driver = driver()  # ty: ignore[call-non-callable]
@@ -115,6 +122,9 @@ async def test_a_satellite_written_with_the_sdk_conforms(driver: object) -> None
     updates = {"reports where its software stands (U1)", "never installs a version it did not report (U2)"}
     assert (updates <= checks) is (device.updater is not None), checks
     assert device.body.sent[:2] == ([True, True] if PERSON_DETECTION in names else []), "and it was valid"
+    films = {"sends its camera's video in the session (M1)", "sends a still picture when asked"}
+    assert (films <= checks) is device.camera, checks
+    assert (device.indicated[:2] == [True, False]) is device.camera, "the sessions were shown, then no more"
 
 
 async def test_a_refused_token_is_forgotten_and_the_device_pairs_again() -> None:

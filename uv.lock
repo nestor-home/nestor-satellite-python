@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -1307,12 +1307,18 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+opencv = [
+    { name = "opencv-python-headless" },
+]
 qr = [
     { name = "av" },
     { name = "zxing-cpp" },
 ]
 sounddevice = [
     { name = "sounddevice" },
+]
+video = [
+    { name = "aiortc" },
 ]
 voice = [
     { name = "aiortc" },
@@ -1333,16 +1339,18 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiortc", marker = "extra == 'video'", specifier = ">=1.15" },
     { name = "aiortc", marker = "extra == 'voice'", specifier = ">=1.15" },
     { name = "av", marker = "extra == 'qr'", specifier = ">=14" },
     { name = "fluent-runtime", specifier = ">=0.4.0" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "opencv-python-headless", marker = "extra == 'opencv'", specifier = ">=4.10" },
     { name = "packaging", specifier = ">=24" },
     { name = "sounddevice", marker = "extra == 'sounddevice'", specifier = ">=0.5.2" },
     { name = "websockets", specifier = ">=15" },
     { name = "zxing-cpp", marker = "extra == 'qr'", specifier = ">=3.1.1" },
 ]
-provides-extras = ["voice", "sounddevice", "qr"]
+provides-extras = ["voice", "video", "opencv", "sounddevice", "qr"]
 
 [package.metadata.requires-dev]
 dev = [
