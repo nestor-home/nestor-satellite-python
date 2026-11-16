@@ -25,14 +25,17 @@ src/nestor_satellite/
 ├── pairing.py    Pairing: device code or enrollment code, Display / Voice ports, TokenStore (token and
 │                 refused code hashes, mode 600)
 ├── speech.py     SpokenCode: the device code said from the recorded clips in voice/ (`voice` extra)
-├── camera.py     Camera port, AvCamera (PyAV), read_qr (ZXing-C++), both in the `qr` extra: enrollment.qr
+├── camera.py     Camera port, Frame, AvCamera (PyAV), OpenCvCamera, PiCamera (Picamera2), PatternCamera,
+│                 read_qr (ZXing-C++, the `qr` extra): enrollment.qr and video.capture
 ├── i18n.py       Messages: what people read and hear, from locales/<lang>/satellite.ftl (en, fr)
 ├── client.py     Satellite: pairing, the WebSocket link (hello/welcome, acks, observations, text, close
 │                 codes, reconnection), audio offered once welcomed
 ├── dispatch.py   Dispatcher: each message from the core to the body or the text display, acknowledged
 ├── body.py       Body: what a driver overrides to carry out intents (identify included)
 ├── audio.py      AudioSource / AudioSink ports and doubles (no dependency)
-├── webrtc.py     WebRtcAudio, track adapters: audio over WebRTC (`voice` extra, aiortc)
+├── webrtc.py     WebRtcAudio, WebRtcMedia, track adapters: voice and media sessions over WebRTC (aiortc)
+├── video.py      CameraFeed, CameraTrack, still pictures in JPEG (`video` extra)
+├── media.py      MediaSessions: rules M1 to M3 of media sessions, the voice stepping aside during a call
 ├── devices.py    Microphone / Speaker through PortAudio (optional `sounddevice` extra)
 └── cli.py        nestor-satellite run
 scripts/          voice.py records voice/ (Kokoro), voice_bench.py measures it (Whisper)
@@ -63,8 +66,12 @@ tests/            behaviour tests, including the server's black-box conformance 
    `scripts/voice_bench.py`, then copy `voice/` to the TypeScript and Rust SDKs. Only voices whose
    licence allows redistribution, written in `voice/LICENSE`.
 8. **Voice is an extra.** The base package (pairing, link, text, intents, observations) never imports
-   aiortc or PyAV (tested): `webrtc.py` and `speech.py` are imported only when a source or a sink is
-   given. Text and audio capabilities follow from what the satellite is given, never declared by hand.
+   aiortc or PyAV (tested): `webrtc.py`, `video.py` and `speech.py` are imported only when a source,
+   a sink or a camera is given. Text, audio and video capabilities follow from what the satellite is
+   given, never declared by hand.
+11. **Media sessions keep M1 to M4 in the SDK** (`media.py`): a connection only for an
+   `intent.media.open` of the link and what `welcome` allowed, an end at `close`, `max_s` and when the
+   link drops, `on_media` before anything is sent, no listening port. A driver cannot bypass them.
 9. **A method is declared only when the SDK carries it out**: `enrollment.qr` only with a `camera`
    the SDK reads QR codes from, `device_code.speech` only with a voice or a speaker.
 10. **Every sentence for people goes through the catalogues** (`locales/en`, `locales/fr`, same

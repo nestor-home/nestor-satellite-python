@@ -3,8 +3,10 @@
 Python SDK to write **satellites** for [Nestor](https://nestorhome.dev): devices (a Raspberry Pi
 speaker, a robot, a screen with a keyboard) that pair with a Nestor server, hold one WebSocket link
 to it, talk with the assistant in writing, aloud or both, carry out its intents and report what they
-observe, following the `nestor.satellite/1` protocol. It does not depend on the Nestor server, and
-audio (WebRTC) is the `voice` extra: a device in writing needs none of it.
+observe, following the `nestor.satellite/1` protocol. A device with a camera can be watched, and one
+with a microphone and a speaker called, in sessions a person opens in Nestor. It does not depend on
+the Nestor server; audio (WebRTC) is the `voice` extra and the camera the `video` extra: a device in
+writing needs neither.
 
 **Documentation:** [nestorhome.dev/docs/sdks/python](https://nestorhome.dev/docs/sdks/python/)
 (pairing options, the command, conformance).
@@ -52,6 +54,28 @@ asyncio.run(satellite.run())  # pairs the first time, then stays connected and r
 
 The text and audio capabilities follow from what the satellite is given; the manifest declares the
 others (body, sensors).
+
+A camera (`pip install 'nestor-satellite[video]'`) is filmed only in a session a person opens in
+Nestor, and a microphone with a speaker also takes calls. The SDK keeps the rules itself: it connects
+only when its link asks, for what it was allowed, ends the session when told, at its time limit or
+when the link drops, steps the assistant's voice aside during a call, and never listens on a port.
+
+```python
+from nestor_satellite import PiCamera  # or OpenCvCamera(0), AvCamera(...), PatternCamera() to try
+
+satellite = Satellite(
+    "https://nestor.example.org",
+    manifest,
+    tokens=tokens,
+    camera=PiCamera(size=(1280, 720)),  # video.capture, and QR codes while pairing (`qr` extra)
+    source=Microphone(),  # a call needs both
+    sink=Speaker(),
+    on_media=led.set,  # media.indicator: on while something is filmed or heard
+)
+```
+
+Nestor lets a device film only over TLS (`https://`), or on the core's machine. See
+[Media sessions](https://nestorhome.dev/docs/satellites/protocol/) in the protocol.
 
 Updates from Nestor: run the command with `--managed` (under a service manager), or give a driver
 `updater=PypiUpdater("my-satellite", module="my_satellite")` and name its package in the manifest

@@ -13,13 +13,16 @@ the QR code of a pairing URI. The manifest's `pairing_methods` follow from what 
 The link is one WebSocket that carries every message: `hello` (manifest and token) then `welcome`,
 intents (acknowledged), observations and text both ways. The capabilities for text and audio follow
 from what was given too: `text_display` declares `text.display`, `text_input` declares `text.input`,
-a `source` `audio.capture` and a `sink` `audio.playback`, an `updater` `device.update`. Audio travels
-over WebRTC (`nestor_satellite.webrtc`, the `voice` extra), offered once the link is welcomed with
-audio allowed. Updates of the device's software are in `update`.
+a `source` `audio.capture` and a `sink` `audio.playback`, an `updater` `device.update`, a `camera`
+`video.capture` and `on_media` `media.indicator`. Audio travels over WebRTC (`nestor_satellite.webrtc`, the `voice`
+extra), offered once the link is welcomed with audio allowed by a core that talks (`welcome.voice`). Sessions a
+person opens to watch or call through the device, and still pictures, are in `media`; updates of the device's
+software in `update`.
 """
 
 import asyncio
 import contextlib
+import functools
 import json
 import logging
 import os
@@ -38,6 +41,7 @@ from nestor_satellite.camera import Camera, read_qr
 from nestor_satellite.codes import Enrollment, InvalidEnrollment
 from nestor_satellite.dispatch import Dispatcher, TextDisplay
 from nestor_satellite.i18n import Messages
+from nestor_satellite.media import Indicator, MediaSessions, VoiceHold
 from nestor_satellite.pairing import (
     PAIRING_CODE,
     PAIRING_URI,
@@ -51,11 +55,13 @@ from nestor_satellite.pairing import (
 from nestor_satellite.protocol import (
     AUDIO_CAPTURE,
     AUDIO_PLAYBACK,
+    MEDIA_INDICATOR,
     PERSON_DETECTION,
     SPEECH_ACTIVITY,
     TEXT_DISPLAY,
     TEXT_INPUT,
     UPDATE,
+    VIDEO_CAPTURE,
     Capability,
     Manifest,
     PairingMethod,
@@ -64,7 +70,8 @@ from nestor_satellite.protocol import (
 from nestor_satellite.update import Updater, Updates
 
 if TYPE_CHECKING:
-    from nestor_satellite.webrtc import WebRtcAudio
+    from nestor_satellite.video import CameraFeed
+    from nestor_satellite.webrtc import WebRtcAudio, WebRtcMedia
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +79,8 @@ PING_S = 20.0  # the core pings this often; so does the satellite
 SILENCE_S = 60.0  # nothing heard for this long: the link is lost (L4)
 WELCOME_S = 15.0  # the core answers `hello` well within this (it closes a late one at 10 s)
 AUDIO = frozenset({AUDIO_CAPTURE, AUDIO_PLAYBACK})
-WIRED = frozenset({TEXT_INPUT, TEXT_DISPLAY, AUDIO_CAPTURE, AUDIO_PLAYBACK, UPDATE})  # declared from what is given
+# Declared from what is given, never by hand.
+WIRED = frozenset({TEXT_INPUT, TEXT_DISPLAY, AUDIO_CAPTURE, AUDIO_PLAYBACK, UPDATE, VIDEO_CAPTURE, MEDIA_INDICATOR})
 
 
 class Close(IntEnum):
@@ -103,6 +111,7 @@ class Satellite:
         display: Display | None = None,
         voice: Voice | None = None,
         camera: Camera | None = None,
+        on_media: Indicator | None = None,
         updater: Updater | None = None,
         enrolls_by: Iterable[PairingMethod] = (),
         enrollment: str | None = None,
@@ -123,7 +132,11 @@ class Satellite:
         `["stun:stun.l.google.com:19302"]`) are only needed beyond the local network.
         `display`, `voice`: where a device code is presented (`device_code.display`, `device_code.speech`).
         Without either, a `sink` says it with the SDK's recorded voice.
-        `camera`: QR codes of pairing URIs are read from it while pairing (`enrollment.qr`).
+        `camera`: films in the sessions a person opens and for still pictures (`video.capture`, needs
+        `pip install nestor-satellite[video]`); QR codes of pairing URIs are read from it while pairing
+        (`enrollment.qr`, the `qr` extra). With a `source` and a `sink`, people can also call through the device.
+        `on_media(active)`: shows when something is filmed or heard in a session, or a picture taken (a light, a
+        screen), returns at once (`media.indicator`).
         `updater`: how the software in `manifest.software` is updated when a person asks (`device.update`).
         `enrolls_by`: `PairingMethod.INPUT` when the driver can take a code typed on the device (`enroll`).
         `enrollment`: a pairing URI or an enrollment code from the device's configuration; by default
@@ -134,7 +147,7 @@ class Satellite:
         if declared := sorted(manifest.names & WIRED):
             raise ValueError(
                 f"{', '.join(declared)} follow from what the satellite is given (text_display, text_input, "
-                "source, sink, updater): do not declare them"
+                "source, sink, updater, camera, on_media): do not declare them"
             )
         env = os.environ if environ is None else environ
         self.messages = Messages(locale, env)
@@ -143,7 +156,14 @@ class Satellite:
         if not core:
             raise ValueError(self.messages("no-core"))
         self.core, self.tokens = core.rstrip("/"), tokens
-        self._audio: WebRtcAudio | None = _webrtc(ice_servers) if source is not None or sink is not None else None
+        audio = source is not None or sink is not None
+        self._audio: WebRtcAudio | None = _webrtc(ice_servers) if audio else None
+        self._media: WebRtcMedia | None = None
+        self._feed: CameraFeed | None = None
+        if camera is not None:
+            self._feed = _feed(camera)
+        if camera is not None or (source is not None and sink is not None):
+            self._media = _webrtc_media(ice_servers)
         speech = None
         if sink is not None and display is None and voice is None:
             from nestor_satellite.speech import SpokenCode  # the voice extra is there: audio needs it
@@ -153,7 +173,8 @@ class Satellite:
             name
             for name, given in ((TEXT_INPUT, text_input), (TEXT_DISPLAY, text_display is not None),
                                 (AUDIO_CAPTURE, source is not None), (AUDIO_PLAYBACK, sink is not None),
-                                (UPDATE, updater is not None))
+                                (UPDATE, updater is not None), (VIDEO_CAPTURE, camera is not None),
+                                (MEDIA_INDICATOR, on_media is not None))
             if given
         ]  # fmt: skip
         self.manifest = replace(
@@ -165,6 +186,7 @@ class Satellite:
         self._text_display = text_display
         self._source, self._sink = source, sink
         self._camera = camera
+        self._on_media = on_media
         self.updates = (
             Updates(updater, manifest.software.version, tokens.path.with_name(f"{tokens.path.stem}.update.json"))
             if updater is not None
@@ -310,10 +332,17 @@ class Satellite:
         url = "ws" + self.core.removeprefix("http") + f"/satellites/{self.manifest.device.id}/link"
         outbox: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
         updates = self.updates
+        sessions: MediaSessions | None = None
+
+        def media(intent_id: str, intent: wire.MediaIntent) -> None:
+            if sessions is not None:
+                sessions.handle(intent_id, intent)
+
         dispatcher = Dispatcher(self.body, outbox.put_nowait, text_display=self._text_display,
-                                update=updates.request if updates is not None else None)  # fmt: skip
+                                update=updates.request if updates is not None else None, media=media)  # fmt: skip
         tasks: list[asyncio.Task[Any]] = []
         refused = asyncio.Event()  # the core refused the token on the audio side
+        voice = VoiceHold(None)
         welcomed = False
         async with websockets.connect(
             url, open_timeout=10, ping_interval=PING_S, ping_timeout=SILENCE_S - PING_S
@@ -327,19 +356,30 @@ class Satellite:
                             continue
                         waiting.reschedule(None)
                         welcomed, self.welcome, self._outbox = True, welcome, outbox
+                        if (
+                            self._feed is not None
+                            and url.startswith("ws:")
+                            and VIDEO_CAPTURE not in welcome.capabilities
+                        ):
+                            logger.warning("%s", self.messages("link-insecure"))  # M7: the device does not film
                         tasks.append(asyncio.create_task(_write(link, outbox)))
                         if updates is not None and (
                             reporting := updates.linked(welcome.capabilities, outbox.put_nowait)
                         ):
                             tasks.append(reporting)
-                        if self._audio is not None and welcome.capabilities & AUDIO:
-                            hearing = self._hear(http, token, welcome.capabilities, link, refused)
-                            tasks.append(asyncio.create_task(hearing))
+                        if self._audio is not None and welcome.voice and welcome.capabilities & AUDIO:
+                            hear = functools.partial(self._hear, http, token, welcome.capabilities, link, refused)
+                            voice = VoiceHold(hear)
+                            voice.start()
+                        sessions = self._sessions(http, token, welcome.capabilities, outbox, voice)
                         self.body.connected(True)
             except websockets.ConnectionClosed:
                 pass
             finally:
                 self._outbox = None
+                await voice.end()
+                if sessions is not None:
+                    await sessions.close()
                 if updates is not None:
                     updates.unlinked()
                 for task in tasks:
@@ -348,6 +388,37 @@ class Satellite:
                 if welcomed:
                     self.body.connected(False)
         return (Close.TOKEN_REFUSED if refused.is_set() else _close(link.close_code)), welcomed
+
+    def _sessions(
+        self, http: httpx.AsyncClient, token: str, allowed: frozenset[str], outbox: asyncio.Queue[Any], voice: VoiceHold
+    ) -> MediaSessions | None:
+        """The media sessions of a link welcomed with `allowed`, when the device films or can be called."""
+        media, feed = self._media, self._feed
+        if media is None:
+            return None
+        device = self.manifest.device.id
+
+        async def connect(intent: wire.MediaOpenIntent) -> None:
+            video = await feed.open() if intent.video and feed is not None else None
+            try:
+                await media.connect(http, device, token, intent.session, video=video,
+                                    source=self._source if intent.audio else None,
+                                    sink=self._sink if intent.audio else None)  # fmt: skip
+            finally:
+                if video is not None and feed is not None:
+                    await feed.release(video)
+
+        return MediaSessions(
+            allowed,
+            films=feed is not None,
+            calls=self._source is not None and self._sink is not None,
+            connect=connect,
+            still=feed.still if feed is not None else None,
+            reply=outbox.put_nowait,
+            voice=voice,
+            messages=self.messages,
+            on_media=self._on_media,
+        )
 
     async def _hear(
         self, http: httpx.AsyncClient, token: str, allowed: frozenset[str], link: Any, refused: asyncio.Event
@@ -412,6 +483,20 @@ def _webrtc(ice_servers: list[str] | None) -> "WebRtcAudio":
     except ImportError as error:
         raise RuntimeError("a microphone or a speaker needs `pip install nestor-satellite[voice]`") from error
     return WebRtcAudio(ice_servers)
+
+
+def _webrtc_media(ice_servers: list[str] | None) -> "WebRtcMedia":
+    from nestor_satellite.webrtc import WebRtcMedia  # importable: the camera or the audio needed it already
+
+    return WebRtcMedia(ice_servers)
+
+
+def _feed(camera: Camera) -> "CameraFeed":
+    try:
+        from nestor_satellite.video import CameraFeed
+    except ImportError as error:
+        raise RuntimeError("a camera needs `pip install nestor-satellite[video]`") from error
+    return CameraFeed(camera)
 
 
 def _methods(

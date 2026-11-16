@@ -35,6 +35,10 @@ def test_an_expression_without_intensity_is_at_full_intensity() -> None:
         message("intent.text", {"text": ""}),
         message("intent.text", {"text": "x" * 16001}),
         message("intent.text", {"text": "Bonjour.", "final": "yes"}),
+        message("intent.media.open", {"session": "s-1", "video": True, "audio": False, "max_s": 0}),
+        message("intent.media.open", {"session": "s-1", "video": "yes", "audio": False, "max_s": 60}),
+        message("intent.media.open", {"session": "", "video": True, "audio": False, "max_s": 60}),
+        message("intent.media.close", {}),
     ],
     ids=[
         "not an object",
@@ -47,6 +51,10 @@ def test_an_expression_without_intensity_is_at_full_intensity() -> None:
         "empty text",
         "text too long",
         "final not a boolean",
+        "a session of no time",
+        "video not a boolean",
+        "no session id",
+        "closing no session",
     ],
 )
 def test_a_malformed_message_from_the_core_is_a_protocol_error(data: Any) -> None:

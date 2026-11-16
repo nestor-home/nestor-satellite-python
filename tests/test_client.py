@@ -343,7 +343,11 @@ async def test_a_link_replaced_by_a_newer_one_stops(tmp_path: Path, caplog: pyte
     assert "took over" in caplog.text
 
 
-@pytest.mark.parametrize(("code", "said"), [(1001, ""), (4400, "refused this device's greeting")])
+@pytest.mark.parametrize(
+    ("code", "said"),
+    [(1001, ""), (4400, "refused this device's greeting")],
+    ids=["stopping", "off contract"],
+)
 async def test_a_link_the_core_closes_is_opened_again_with_the_same_token(
     tmp_path: Path, caplog: pytest.LogCaptureFixture, code: int, said: str
 ) -> None:

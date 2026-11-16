@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "nestor-satellite"
 version = "0.5.0"
-description = "Python SDK to write Nestor satellite drivers: pairing, the WebSocket link, text, and WebRTC audio as an extra."
+description = "Python SDK to write Nestor satellite drivers: pairing, the WebSocket link, text, and WebRTC audio and video as extras."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -32,6 +32,10 @@ classifiers = [
 [project.optional-dependencies]
 # Audio over WebRTC (aiortc, with PyAV): a microphone, a speaker, and the device code said aloud.
 voice = ["aiortc>=1.15"]
+# A camera filmed over WebRTC in the sessions a person opens, and still pictures (aiortc, with PyAV).
+video = ["aiortc>=1.15"]
+# A camera read through OpenCV (V4L2 on Linux). The Raspberry Pi camera (Picamera2) comes with the system instead.
+opencv = ["opencv-python-headless>=4.10"]
 # The machine's microphone and speaker (PortAudio). Without it, plug your own AudioSource/AudioSink.
 sounddevice = ["sounddevice>=0.5.2"]
 # Pairing URIs read from a camera: ZXing-C++ decodes, PyAV reads the camera.
@@ -58,7 +62,7 @@ dev = [
     "pre-commit==4.7.0",
     "jsonschema>=4.26.0",
     # The server, for its black-box conformance suite and its schemas. Tests only: the SDK never imports it.
-    "nestor-home[voice]==0.13.0",
+    "nestor-home[voice,media]==0.14.0",
     "segno==1.6.6",
 ]
 

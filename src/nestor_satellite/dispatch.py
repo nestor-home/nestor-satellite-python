@@ -1,6 +1,6 @@
 """What the satellite does with each message from the core: hand intents to the body (the assistant's
-words to the text display, an update to the updates) and acknowledge them, hand the welcome back to the
-link."""
+words to the text display, an update to the updates, media sessions and pictures to the sessions) and acknowledge
+them, hand the welcome back to the link."""
 
 import json
 import logging
@@ -14,6 +14,7 @@ from nestor_satellite.protocol import ProtocolError
 logger = logging.getLogger(__name__)
 
 type TextDisplay = Callable[[str, bool], None]  # shows the assistant's words (text, final); returns at once
+type Media = Callable[[str, wire.MediaIntent], None]  # an intent's id and the intent; returns at once
 
 
 class Dispatcher:
@@ -24,11 +25,13 @@ class Dispatcher:
         *,
         text_display: TextDisplay | None = None,
         update: Callable[[str], None] | None = None,
+        media: Media | None = None,
     ) -> None:
         self.body = body
         self._reply = reply
         self._text_display = text_display
         self._update = update
+        self._media = media
 
     def handle(self, raw: str | bytes) -> wire.Welcome | None:
         """Carry out one message; the welcome is returned, everything else is handled here."""
@@ -55,6 +58,9 @@ class Dispatcher:
             case wire.UpdateIntent(version=version):
                 if self._update is not None:
                     self._update(version)
+            case wire.MediaOpenIntent() | wire.MediaCloseIntent() | wire.SnapshotIntent() as media:
+                if self._media is not None:
+                    self._media(received.id, media)
             case _:  # the last intent: a beat
                 self.body.beat()
         self._reply(wire.ack(received.id))

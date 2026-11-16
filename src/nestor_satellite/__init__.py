@@ -1,11 +1,20 @@
 """Write a Nestor satellite in Python: pair with the core, hold its link, talk in writing, aloud
-(WebRTC audio, the `voice` extra) or both, carry out its intents, report observations and update
-itself when a person asks, following
-the `nestor.satellite/1` protocol."""
+(WebRTC audio, the `voice` extra) or both, carry out its intents, report observations, film and take
+calls in the sessions a person opens (the `video` extra) and update itself when a person asks,
+following the `nestor.satellite/1` protocol."""
 
 from nestor_satellite.audio import AudioSink, AudioSource, RecordingSink, SilenceSource
 from nestor_satellite.body import Body
-from nestor_satellite.camera import AvCamera, Camera, Frame, read_qr
+from nestor_satellite.camera import (
+    AvCamera,
+    Camera,
+    Frame,
+    OpenCvCamera,
+    PatternCamera,
+    PiCamera,
+    PixelFormat,
+    read_qr,
+)
 from nestor_satellite.client import CapabilityNotAllowed, Satellite
 from nestor_satellite.codes import Enrollment, InvalidEnrollment, normalize_enrollment_code, parse_pairing_uri
 from nestor_satellite.dispatch import TextDisplay
@@ -24,12 +33,14 @@ from nestor_satellite.protocol import (
     EXPRESSION,
     HEAD_MOTION,
     IDENTIFY,
+    MEDIA_INDICATOR,
     PERSON_DETECTION,
     PROTOCOL,
     SPEECH_ACTIVITY,
     TEXT_DISPLAY,
     TEXT_INPUT,
     UPDATE,
+    VIDEO_CAPTURE,
     Behavior,
     Capability,
     Device,
@@ -49,6 +60,7 @@ __all__ = [
     "EXPRESSION",
     "HEAD_MOTION",
     "IDENTIFY",
+    "MEDIA_INDICATOR",
     "PAIRING_CODE",
     "PAIRING_URI",
     "PERSON_DETECTION",
@@ -57,6 +69,7 @@ __all__ = [
     "TEXT_DISPLAY",
     "TEXT_INPUT",
     "UPDATE",
+    "VIDEO_CAPTURE",
     "AudioSink",
     "AudioSource",
     "AvCamera",
@@ -73,8 +86,12 @@ __all__ = [
     "Frame",
     "InvalidEnrollment",
     "Manifest",
+    "OpenCvCamera",
     "PairingFailed",
     "PairingMethod",
+    "PatternCamera",
+    "PiCamera",
+    "PixelFormat",
     "ProtocolError",
     "PypiUpdater",
     "RecordingSink",

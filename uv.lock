@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -1267,7 +1267,7 @@ wheels = [
 
 [[package]]
 name = "nestor-home"
-version = "0.13.0"
+version = "0.14.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioimaplib" },
@@ -1286,12 +1286,15 @@ dependencies = [
     { name = "uvicorn" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e0/f9/2c6f76791587c48667809b656078c2b50f564fa3d4ee676d8084b7ad9524/nestor_home-0.13.0.tar.gz", hash = "sha256:09a55072fade84986440cdc03661f288f8dcedbade711e632040c71189524f0c", size = 1940359, upload-time = "2026-11-15T13:08:11.025Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/03/a3/f76ced87cb8579ba0870e7520e4ee9fbfce849855ba8cd9bec9ab882cea2/nestor_home-0.14.0.tar.gz", hash = "sha256:0ab11d54ada13113280c966c9bf3e24876c9b4a4c512bdff1969bd76c641b2fb", size = 2014880, upload-time = "2026-11-16T22:28:27.542Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/f9/3e8f0119010e1346e34e1d5e4f89cdb1c6e77d69a9664bdd1e320a6c4e64/nestor_home-0.13.0-py3-none-any.whl", hash = "sha256:dd013858f2b3c21ee3c2fa6d397c2c19c60fe54c3ecc3b6f2562d6f63f29df40", size = 2256901, upload-time = "2026-11-15T13:08:09.695Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/0e/7d54915c64ffddb06ce0d1250bfd45548cd80733bf35aa8f572f8a642f7d/nestor_home-0.14.0-py3-none-any.whl", hash = "sha256:42d5fdf029119f7c7748f8e898fe0c1d00f641cac2bbab47a6678ffe7acc9c83", size = 2363469, upload-time = "2026-11-16T22:28:25.833Z" },
 ]
 
 [package.optional-dependencies]
+media = [
+    { name = "aiortc" },
+]
 voice = [
     { name = "pipecat-ai", extra = ["webrtc"] },
 ]
@@ -1308,12 +1311,18 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+opencv = [
+    { name = "opencv-python-headless" },
+]
 qr = [
     { name = "av" },
     { name = "zxing-cpp" },
 ]
 sounddevice = [
     { name = "sounddevice" },
+]
+video = [
+    { name = "aiortc" },
 ]
 voice = [
     { name = "aiortc" },
@@ -1322,7 +1331,7 @@ voice = [
 [package.dev-dependencies]
 dev = [
     { name = "jsonschema" },
-    { name = "nestor-home", extra = ["voice"] },
+    { name = "nestor-home", extra = ["media", "voice"] },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -1334,21 +1343,23 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiortc", marker = "extra == 'video'", specifier = ">=1.15" },
     { name = "aiortc", marker = "extra == 'voice'", specifier = ">=1.15" },
     { name = "av", marker = "extra == 'qr'", specifier = ">=14" },
     { name = "fluent-runtime", specifier = ">=0.4.0" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "opencv-python-headless", marker = "extra == 'opencv'", specifier = ">=4.10" },
     { name = "packaging", specifier = ">=24" },
     { name = "sounddevice", marker = "extra == 'sounddevice'", specifier = ">=0.5.2" },
     { name = "websockets", specifier = ">=15" },
     { name = "zxing-cpp", marker = "extra == 'qr'", specifier = ">=3.1.1" },
 ]
-provides-extras = ["voice", "sounddevice", "qr"]
+provides-extras = ["voice", "video", "opencv", "sounddevice", "qr"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "jsonschema", specifier = ">=4.26.0" },
-    { name = "nestor-home", extras = ["voice"], specifier = "==0.13.0" },
+    { name = "nestor-home", extras = ["voice", "media"], specifier = "==0.14.0" },
     { name = "pre-commit", specifier = "==4.7.0" },
     { name = "pytest", specifier = "==9.2.0" },
     { name = "pytest-asyncio", specifier = "==1.5.0" },

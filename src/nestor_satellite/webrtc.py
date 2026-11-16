@@ -1,9 +1,12 @@
-"""A satellite's audio over WebRTC (`pip install nestor-satellite[voice]`): Opus only, no data channel.
+"""A satellite's media over WebRTC (`pip install nestor-satellite[voice]`, or `[video]`): no data channel.
 
-Once its link is welcomed with `audio.capture` or `audio.playback` allowed, the satellite offers a
-peer connection (`POST /satellites/{device_id}/audio`, its token as a bearer): the microphone goes
-to the core, the core's voice comes back to the speaker. The connection lives with the link; the
-satellite offers again when it fails.
+Voice: once its link is welcomed with `audio.capture` or `audio.playback` allowed, the satellite offers a peer
+connection (`POST /satellites/{device_id}/audio`, its token as a bearer): the microphone goes to the core, the core's
+voice comes back to the speaker. The connection lives with the link; the satellite offers again when it fails.
+
+Sessions a person opens (`media`): asked by the core on the link, the satellite connects for that session
+(`POST /satellites/{device_id}/media`, its token and the session's id), with the camera's video and, for a call, its
+microphone while it plays what the core sends. It only ever connects out: it listens on no port.
 """
 
 import asyncio
@@ -21,6 +24,10 @@ from nestor_satellite.audio import AudioSink, AudioSource, SilenceSource
 
 class TokenRefused(Exception):
     """The core answered 401: it does not know this token any more."""
+
+
+class SessionRefused(Exception):
+    """The core refused to connect a media session: it no longer waits for it, or the token is not known."""
 
 
 class SourceTrack(MediaStreamTrack):
@@ -119,6 +126,70 @@ class WebRtcAudio:
                 player.cancel()
             await asyncio.gather(*players, return_exceptions=True)
             await microphone.close()
+
+
+class WebRtcMedia:
+    """The connections of the sessions a person opens: `connect` carries one until it ends."""
+
+    def __init__(self, ice_servers: list[str] | None = None) -> None:
+        self._ice = [RTCIceServer(urls=url) for url in ice_servers or []]
+
+    async def connect(
+        self,
+        http: httpx.AsyncClient,
+        device_id: str,
+        token: str,
+        session: str,
+        *,
+        video: MediaStreamTrack | None,
+        source: AudioSource | None,
+        sink: AudioSink | None,
+    ) -> None:
+        """Connect for `session` and carry it until the connection fails or closes (returns), or is cancelled.
+        `video`: the camera's track; `source` and `sink` together, for a call: the microphone, opened for this
+        session only, and the speaker the core's audio is played on."""
+        peer = RTCPeerConnection(RTCConfiguration(iceServers=self._ice))
+        ended = asyncio.Event()
+        players: set[asyncio.Task[None]] = set()
+        speaking = False
+
+        @peer.on("track")
+        def incoming(track: MediaStreamTrack) -> None:
+            if track.kind == "audio" and sink is not None:
+                players.add(asyncio.ensure_future(play(track, sink)))
+
+        @peer.on("connectionstatechange")
+        def state() -> None:
+            if peer.connectionState in {"failed", "closed"}:
+                ended.set()
+
+        try:
+            if video is not None:
+                peer.addTrack(video)
+            if source is not None and sink is not None:
+                await source.start()
+                speaking = True
+                peer.addTrack(SourceTrack(source))  # sendrecv: the core's audio comes back on it
+            await peer.setLocalDescription(await peer.createOffer())
+            local = peer.localDescription
+            response = await http.post(
+                f"/satellites/{device_id}/media",
+                json={"session": session, "sdp": local.sdp, "type": local.type},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            if response.status_code in (401, 403):
+                raise SessionRefused(response.text)
+            answer = response.raise_for_status().json()
+            await peer.setRemoteDescription(RTCSessionDescription(sdp=answer["sdp"], type=answer["type"]))
+            await ended.wait()
+        finally:
+            await peer.close()
+            for player in players:
+                player.cancel()
+            await asyncio.gather(*players, return_exceptions=True)
+            if speaking:
+                assert source is not None
+                await source.close()
 
 
 class _Drain(AudioSink):

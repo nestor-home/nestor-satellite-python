@@ -24,6 +24,8 @@ HEAD_MOTION = "motion.head"
 IDENTIFY = "device.identify"  # it can make itself noticed (blink, wiggle, chime): an aid, never a proof
 UPDATE = "device.update"  # it installs a newer version of its own software, on a person's request
 PERSON_DETECTION = "vision.person_detection"
+VIDEO_CAPTURE = "video.capture"  # it films, only in a session a person opened (`intent.media.open`)
+MEDIA_INDICATOR = "media.indicator"  # it shows that a session is open (a light, a screen)
 SPEECH_ACTIVITY = "audio.speech_activity"
 
 _SLUG = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")

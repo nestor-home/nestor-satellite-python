@@ -29,5 +29,5 @@ def y4m(frames: list[Frame]) -> bytes:
     width, height = frames[0].width, frames[0].height
     video = bytearray(f"YUV4MPEG2 W{width} H{height} F5:1 Ip A1:1 C420jpeg\n".encode())
     for frame in frames:
-        video += b"FRAME\n" + frame.gray + bytes([128]) * (width // 2) * (height // 2) * 2
+        video += b"FRAME\n" + frame.pixels + bytes([128]) * (width // 2) * (height // 2) * 2
     return bytes(video)
