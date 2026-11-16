@@ -1301,7 +1301,7 @@ voice = [
 
 [[package]]
 name = "nestor-satellite"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "fluent-runtime" },
