@@ -1,6 +1,7 @@
 """The SDK against the Nestor server's black-box conformance suite."""
 
 import sys
+from collections.abc import Callable
 from typing import Any
 
 import pytest
@@ -99,8 +100,8 @@ class Driver:
     ids=["robot that can identify", "sensor without audio", "screen and keyboard", "voice and text",
          "updates itself", "camera that takes calls"],
 )  # fmt: skip
-async def test_a_satellite_written_with_the_sdk_conforms(driver: object) -> None:
-    device: Driver = driver()  # ty: ignore[call-non-callable]
+async def test_a_satellite_written_with_the_sdk_conforms(driver: Callable[[], Driver]) -> None:
+    device = driver()
     findings = await check_satellite(device, deadline_s=10)
 
     assert findings.passed, findings.failures()
