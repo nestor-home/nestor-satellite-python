@@ -74,7 +74,7 @@ satellite = Satellite(
 )
 ```
 
-A device allowed to film links over TLS (`https://`), unless it runs on the core's machine. See
+Nestor lets a device film only over TLS (`https://`), or on the core's machine. See
 [Media sessions](https://nestorhome.dev/docs/satellites/protocol/) in the protocol.
 
 Updates from Nestor: run the command with `--managed` (under a service manager), or give a driver

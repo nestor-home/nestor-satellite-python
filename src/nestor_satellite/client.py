@@ -89,7 +89,6 @@ class Close(IntEnum):
     STOPPING = 1001  # the core stops: reconnect
     OFF_CONTRACT = 4400  # `hello` late, off-contract or for another device: reconnect
     TOKEN_REFUSED = 4401  # forget the token and pair again
-    INSECURE = 4403  # allowed to film, it must link over TLS: retry, until the core is reached over https
     REPLACED = 4409  # a newer link of this device took over: stop
 
 
@@ -237,8 +236,6 @@ class Satellite:
                     if closed is Close.REPLACED:
                         logger.warning("%s", self.messages("link-replaced"))
                         return
-                    if closed is Close.INSECURE:
-                        logger.warning("%s", self.messages("link-insecure"))
                     delay = self._backoff[0] if welcomed else min(delay * 2, self._backoff[1])
                     seconds = round(delay, 1)
                     if failure is not None:
@@ -359,6 +356,12 @@ class Satellite:
                             continue
                         waiting.reschedule(None)
                         welcomed, self.welcome, self._outbox = True, welcome, outbox
+                        if (
+                            self._feed is not None
+                            and url.startswith("ws:")
+                            and VIDEO_CAPTURE not in welcome.capabilities
+                        ):
+                            logger.warning("%s", self.messages("link-insecure"))  # M7: the device does not film
                         tasks.append(asyncio.create_task(_write(link, outbox)))
                         if updates is not None and (
                             reporting := updates.linked(welcome.capabilities, outbox.put_nowait)

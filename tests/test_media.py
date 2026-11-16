@@ -225,6 +225,18 @@ async def test_a_still_picture_is_sent_when_asked_by_a_device_allowed_to_film(tm
     assert camera.started == camera.closed == paired + 1, "on for the picture only"
 
 
+@pytest.mark.parametrize("allowed", [True, False], ids=["allowed to film", "not allowed"])
+async def test_a_camera_not_allowed_to_film_over_a_plain_link_says_to_reach_nestor_over_https(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, allowed: bool
+) -> None:
+    async with Core().serving() as core:
+        uri = await core.enrollment(EVERYTHING if allowed else CALL)
+        async with running(device(core, tmp_path, uri, camera=Lens())):
+            await core.next_link()
+            await asyncio.sleep(0.3)
+    assert ("reach Nestor over https" in caplog.text) is not allowed
+
+
 class Requests(httpx.AsyncHTTPTransport):
     """The device's own HTTP, every path it asks for noted."""
 
