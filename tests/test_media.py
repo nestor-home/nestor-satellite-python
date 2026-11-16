@@ -12,15 +12,14 @@ from pathlib import Path
 from typing import Any
 
 import av
+import httpx
 import pytest
 from aiortc import MediaStreamTrack, RTCPeerConnection, RTCSessionDescription
 from nestor.adapters.channels.satellites.channel import SatellitesChannel
-from nestor.core import Capability
 from nestor.modules.journal import Journal
 from nestor.modules.satellites import MediaEnd, MediaSessions, Purpose, Viewer, pairing_uri
 from nestor.modules.satellites import Pairing as Service
 from nestor.modules.satellites import PairingMethod as ServerMethod
-from nestor.modules.satellites import Satellite as Paired
 from nestor.modules.satellites import wire as server
 from nestor.testing.channels import ScriptedAssistant
 from nestor.testing.journal import MemoryBlobStore, MemoryEventLog
@@ -226,12 +225,16 @@ async def test_a_still_picture_is_sent_when_asked_by_a_device_allowed_to_film(tm
     assert camera.started == camera.closed == paired + 1, "on for the picture only"
 
 
-class FilmingHome(SatellitesChannel):
-    """The satellites channel of a core that serves voice: `welcome` grants a device the audio it was paired with,
-    which a call needs. The voice itself is left out: what the device offers for it is refused."""
+class Requests(httpx.AsyncHTTPTransport):
+    """The device's own HTTP, every path it asks for noted."""
 
-    def allowed(self, satellite: Paired) -> frozenset[Capability]:
-        return satellite.capabilities
+    def __init__(self) -> None:
+        super().__init__()
+        self.paths: list[str] = []
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        self.paths.append(request.url.path)
+        return await super().handle_async_request(request)
 
 
 class Browser:
@@ -264,7 +267,7 @@ class Browser:
 async def home() -> AsyncGenerator[tuple[MediaSessions, Service, MemoryBlobStore, str]]:
     journal = Journal(MemoryEventLog())
     pairing, blobs, port = Service(journal), MemoryBlobStore(), _free_port()
-    channel = FilmingHome("satellites", host="127.0.0.1", port=port)
+    channel = SatellitesChannel("satellites", host="127.0.0.1", port=port)  # no voice: it relays media only
     channel.host_satellites(pairing, journal)
     relay = channel.media_relay()
     assert relay is not None, "the core's media extra is installed for the tests"
@@ -280,6 +283,8 @@ async def home() -> AsyncGenerator[tuple[MediaSessions, Service, MemoryBlobStore
 
 
 async def test_a_person_watches_calls_and_takes_a_picture_through_the_satellite_on_the_core(tmp_path: Path) -> None:
+    """A core without a voice: the device offers none, and its microphone and speaker serve the call."""
+    requests = Requests()
     owner = Viewer(account_id="a-mathis", person=None, owner=True, signed_in="s-1")
     shown: list[bool] = []
     sink = RecordingSink()
@@ -288,7 +293,7 @@ async def test_a_person_watches_calls_and_takes_a_picture_through_the_satellite_
         assert started.code is not None
         satellite = Satellite(url, Manifest(DEVICE), tokens=TokenStore(tmp_path / "t.json"), camera=Lens(),
                               source=SilenceSource(), sink=sink, on_media=shown.append, environ={},
-                              enrollment=pairing_uri(url, started.code), poll_s=0.05)  # fmt: skip
+                              enrollment=pairing_uri(url, started.code), poll_s=0.05, transport=requests)  # fmt: skip
         async with running(satellite):
             await until(lambda: media.linked(DEVICE.id) is not None)
             watching = Browser(call=False)
@@ -309,4 +314,5 @@ async def test_a_person_watches_calls_and_takes_a_picture_through_the_satellite_
             taken = await media.snapshot(DEVICE.id, owner)
             picture = await blobs.get(taken.blob.digest)
     assert picture[:2] == b"\xff\xd8", "a JPEG"
+    assert not [path for path in requests.paths if path.endswith("/audio")], "no voice offered to a core without one"
     assert json.dumps(shown) == "[true, false, true, false, true, false]"

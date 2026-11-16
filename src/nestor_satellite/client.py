@@ -15,8 +15,9 @@ intents (acknowledged), observations and text both ways. The capabilities for te
 from what was given too: `text_display` declares `text.display`, `text_input` declares `text.input`,
 a `source` `audio.capture` and a `sink` `audio.playback`, an `updater` `device.update`, a `camera`
 `video.capture` and `on_media` `media.indicator`. Audio travels over WebRTC (`nestor_satellite.webrtc`, the `voice`
-extra), offered once the link is welcomed with audio allowed. Sessions a person opens to watch or call through the
-device, and still pictures, are in `media`; updates of the device's software in `update`.
+extra), offered once the link is welcomed with audio allowed by a core that talks (`welcome.voice`). Sessions a
+person opens to watch or call through the device, and still pictures, are in `media`; updates of the device's
+software in `update`.
 """
 
 import asyncio
@@ -363,7 +364,7 @@ class Satellite:
                             reporting := updates.linked(welcome.capabilities, outbox.put_nowait)
                         ):
                             tasks.append(reporting)
-                        if self._audio is not None and welcome.capabilities & AUDIO:
+                        if self._audio is not None and welcome.voice and welcome.capabilities & AUDIO:
                             hear = functools.partial(self._hear, http, token, welcome.capabilities, link, refused)
                             voice = VoiceHold(hear)
                             voice.start()

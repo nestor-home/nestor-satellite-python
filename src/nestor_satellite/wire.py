@@ -72,6 +72,7 @@ class Welcome:
     device_id: str
     room: str
     capabilities: frozenset[str]  # what the household allowed, among what was declared
+    voice: bool = True  # the core talks with it: its audio offers a voice (A1); else audio serves calls only
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,7 +148,11 @@ def parse(data: Any) -> Received:
     try:
         match kind:
             case "welcome":
-                message = Welcome(str(payload["device_id"]), str(payload["room"]), frozenset(payload["capabilities"]))
+                voice = payload.get("voice", True)
+                if not isinstance(voice, bool):
+                    raise ValueError("expected a boolean voice")
+                capabilities = frozenset(payload["capabilities"])
+                message = Welcome(str(payload["device_id"]), str(payload["room"]), capabilities, voice)
             case "intent.behavior":
                 message = BehaviorIntent(Behavior(payload["behavior"]))
             case "intent.expression":
