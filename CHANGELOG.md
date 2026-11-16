@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/nestor-home/nestor-satellite-python/compare/v0.5.0...v0.6.0) (2026-11-16)
+
+
+### Features
+
+* film and take calls in sessions the core opens ([#43](https://github.com/nestor-home/nestor-satellite-python/issues/43)) ([fc1d77f](https://github.com/nestor-home/nestor-satellite-python/commit/fc1d77f5be822cc076eda3660b9c1a9984cffefc))
+
 ## [0.5.0](https://github.com/nestor-home/nestor-satellite-python/compare/v0.4.0...v0.5.0) (2026-11-04)
 
 
