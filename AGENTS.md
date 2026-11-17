@@ -7,7 +7,7 @@ read it before changing anything.
 
 ```bash
 uv sync --all-extras         # dev group included, with the server (nestor-home) from PyPI
-uv run pre-commit install
+uv run lefthook install      # pre-push: ruff, ty and the lock on the pushed files
 uv run ruff check && uv run ruff format --check && uv run ty check && uv run pytest
 ```
 
@@ -87,5 +87,7 @@ tests/            behaviour tests, including the server's black-box conformance 
 ## Tests
 
 - Test behaviour, not implementation: one behaviour per test, named as a sentence.
+- Tests run in random order (`pytest-randomly`, seed printed at the top): a test never relies on another. Replay
+  an order with `pytest --randomly-seed=<seed>`.
 - Hardware is replaced by doubles (`SilenceSource`, `RecordingSink`, a fake `sounddevice` module).
 - Uncovered code is either tested for a real behaviour or deleted — never excluded.
