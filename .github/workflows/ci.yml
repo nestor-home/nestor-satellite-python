@@ -29,7 +29,7 @@ jobs:
       - run: uv run ruff format --check
       - run: uv run ty check
       # The conformance runs take 10 to 20 s each, mostly waiting on the network and timers: more workers than CPUs,
-      # those runs queued first, and idle workers take over queued tests, so that no run waits behind another.
+      # and those runs queued first so that they start early; idle workers take over the tests still queued.
       - run: uv run pytest -n 10 --dist worksteal ${{ matrix.pytest }} tests/test_conformance.py $(ls tests/test_*.py | grep -v conformance)
 
   # The single check the branch rules require.
