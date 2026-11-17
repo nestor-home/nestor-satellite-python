@@ -11,6 +11,13 @@ jobs:
     strategy:
       matrix:
         python: ["3.12", "3.13", "3.14"]
+        # Coverage and its gate on the newest Python only: there coverage.py reads branches through sys.monitoring at
+        # little cost, while on 3.12 its tracer makes importing the server's dependencies (pypdf) take 12 s per worker.
+        include:
+          - python: "3.12"
+            pytest: --no-cov
+          - python: "3.13"
+            pytest: --no-cov
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.3
@@ -22,7 +29,7 @@ jobs:
       - run: uv run ruff format --check
       - run: uv run ty check
       # The conformance runs mostly wait on the network and timers: more workers than CPUs, idle ones take over queued tests.
-      - run: uv run pytest -n 8 --dist worksteal
+      - run: uv run pytest -n 8 --dist worksteal ${{ matrix.pytest }}
 
   # The single check the branch rules require.
   ci:
