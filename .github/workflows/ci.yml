@@ -29,7 +29,7 @@ jobs:
       - run: uv run ruff format --check
       - run: uv run ty check
       # The conformance runs mostly wait on the network and timers: more workers than CPUs, idle ones take over queued tests.
-      - run: uv run pytest -n 8 --dist worksteal ${{ matrix.pytest }}
+      - run: uv run pytest -n 8 --dist worksteal --durations=20 ${{ matrix.pytest }}
 
   # The single check the branch rules require.
   ci:
