@@ -96,7 +96,7 @@ dev dependency, pinned and taken from PyPI. To test against a local checkout of 
 
 ```bash
 uv sync --all-extras
-uv run pre-commit install
+uv run lefthook install      # pre-push: ruff, ty and the lock on the pushed files
 uv run ruff check && uv run ruff format --check && uv run ty check && uv run pytest
 ```
 
