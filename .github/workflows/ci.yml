@@ -16,7 +16,8 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: ${{ matrix.python }}
-      - run: uv sync --locked --all-extras
+      # Bytecode compiled once here, rather than by every pytest worker at the same time.
+      - run: uv sync --locked --all-extras --compile-bytecode
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run ty check
