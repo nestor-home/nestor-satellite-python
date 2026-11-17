@@ -5,22 +5,37 @@ on:
     branches: [main]
   pull_request:
 
+# A new commit on a pull request makes its earlier run moot: it is cancelled. Runs on main always finish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   check:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python: ["3.12", "3.13", "3.14"]
+        # Coverage and its gate on the newest Python only: there coverage.py reads branches through sys.monitoring at
+        # little cost, while on 3.12 its tracer makes importing the server's dependencies (pypdf) take 12 s per worker.
+        include:
+          - python: "3.12"
+            pytest: --no-cov
+          - python: "3.13"
+            pytest: --no-cov
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: ${{ matrix.python }}
-      - run: uv sync --locked --all-extras
+      # Bytecode compiled once here, rather than by every pytest worker at the same time.
+      - run: uv sync --locked --all-extras --compile-bytecode
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run ty check
-      - run: uv run pytest
+      # The conformance runs take 10 to 20 s each, mostly waiting on the network and timers: more workers than CPUs,
+      # and those runs queued first so that they start early; idle workers take over the tests still queued.
+      - run: uv run pytest -n 10 --dist worksteal ${{ matrix.pytest }} tests/test_conformance.py $(ls tests/test_*.py | grep -v conformance)
 
   # The single check the branch rules require.
   ci:
