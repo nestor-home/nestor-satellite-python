@@ -62,7 +62,7 @@ dev = [
     "ty==0.0.107",
     "jsonschema>=4.26.0",
     # The server, for its black-box conformance suite and its schemas. Tests only: the SDK never imports it.
-    "nestor-home[voice,media]==0.16.0",
+    "nestor-home[voice,media]==0.17.0",
     "segno==1.6.6",
     "pytest-randomly==5.1.0",
     "lefthook==2.2.2",
