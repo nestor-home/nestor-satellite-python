@@ -59,7 +59,7 @@ dev = [
     "pytest-cov==7.1.0",
     "pytest-xdist==3.8.0",
     "ruff==0.17.6",
-    "ty==0.0.107",
+    "ty==0.0.108",
     "jsonschema>=4.26.0",
     # The server, for its black-box conformance suite and its schemas. Tests only: the SDK never imports it.
     "nestor-home[voice,media]==0.17.0",
