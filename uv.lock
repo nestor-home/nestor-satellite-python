@@ -169,15 +169,15 @@ wheels = [
 
 [[package]]
 name = "aioice"
-version = "0.13.0"
+version = "0.15.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dnspython" },
     { name = "ifaddr" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4a/16/fd4e7d1ccab77b6ae655bf6e796161586eeab18f5047c584bbedea846d66/aioice-0.13.0.tar.gz", hash = "sha256:02c2dee812f1a68602689a444bd5125a144b6ee43bca74229a1e0f7842d1897c", size = 68714, upload-time = "2026-11-05T17:01:35.933Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/6f/84961dbeecaed4f298c762556748303da302b5823dc3cdcf2434ba88c6f5/aioice-0.15.1.tar.gz", hash = "sha256:c585e0cfa66646a617153d5f111814a4ec47dfbe1ccfa4d7c1f6158866dee78f", size = 72498, upload-time = "2026-11-25T09:30:21.579Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/84/06/64a79f0b7d730fc10b35fe31a396816030c0ab635be221c6c8587b00fc7f/aioice-0.13.0-py3-none-any.whl", hash = "sha256:15937b43f5f7a3587148049f1c93ff95fe4add1b7e0f5931eeec6408bc188d06", size = 29732, upload-time = "2026-11-05T17:01:34.897Z" },
+    { url = "https://files.pythonhosted.org/packages/af/37/66a9f0298c5e4012bc5f71ef05b541d3d33eed76999db4e78fc7507f5282/aioice-0.15.1-py3-none-any.whl", hash = "sha256:f1830fde71051f2cd91405c8a306a263be55967c65da248495380f53c56aca55", size = 31023, upload-time = "2026-11-25T09:30:20.337Z" },
 ]
 
 [[package]]
@@ -191,7 +191,7 @@ wheels = [
 
 [[package]]
 name = "aiortc"
-version = "1.16.0"
+version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioice" },
@@ -202,9 +202,9 @@ dependencies = [
     { name = "pylibsrtp" },
     { name = "pyopenssl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d6/19/4deceaea278a70c57c9b045ecc3a5a85ce37d3e6679195b1d2161694d577/aiortc-1.16.0.tar.gz", hash = "sha256:892a1d22ec500a41c6a2377a372db575929d9e9f614e9a2276b145cf40924798", size = 1196535, upload-time = "2026-11-06T09:10:23.343Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/04/f0/7ea7fd109ddb1fd347c071ebb1e626f92adf24999231b5d8019ea3bccea8/aiortc-1.17.0.tar.gz", hash = "sha256:69c14be1699839b36ab8d8910b155cd95882f31e94b52edfb293cd827164df54", size = 1235508, upload-time = "2026-11-25T17:19:30.555Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/47/1c/3d2560721f57d6adfdfcde2f24504a6b77b9bcc7e8ea6946c80c26bd8806/aiortc-1.16.0-py3-none-any.whl", hash = "sha256:084844ba0542fc9f9a41d135e2c718c2122746e2d70e62974435de9b98ec92b2", size = 97125, upload-time = "2026-11-06T09:10:21.718Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/e8/023c8d0258ab3e59150c356050bd570b36874433b129405136c04e512840/aiortc-1.17.0-py3-none-any.whl", hash = "sha256:b9c24008d90313de290a9876e11940f5c44bb29ae9cd256b32afa88f149bdb5a", size = 110993, upload-time = "2026-11-25T17:19:29.057Z" },
 ]
 
 [[package]]
@@ -1253,7 +1253,7 @@ wheels = [
 
 [[package]]
 name = "nestor-home"
-version = "0.17.0"
+version = "0.18.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aioimaplib" },
@@ -1272,9 +1272,9 @@ dependencies = [
     { name = "uvicorn" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6c/b4/f83637d78f53fd1a62b02f2b61acb824b1f928384e0450acc745985da785/nestor_home-0.17.0.tar.gz", hash = "sha256:d3a0eba7e7b31ce54aaab06ae8f1a4dc401f154d5d62cf172c7f508c268629fe", size = 2052065, upload-time = "2026-11-19T21:28:40.908Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ba/0a/10babd66e9eda33ee8a19634a40094de2cbbb6d3bf6b9964700799620cfb/nestor_home-0.18.0.tar.gz", hash = "sha256:fe02bb1b9a8bb0b6b09bc18dd18532e70dfa9ba86cfa4070b278ccc17828a7a8", size = 2167905, upload-time = "2026-11-27T16:18:39.61Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/51/caec32a42938f998cffeebc3e8bf42e846e9922a30cda5d0688a538a957c/nestor_home-0.17.0-py3-none-any.whl", hash = "sha256:17bbdcb43f4442451ded1826b7e3e86a74bc65dba3f2ebd2c69f1a03652be8a3", size = 2404687, upload-time = "2026-11-19T21:28:39.343Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/fb/fc3ad857abc1fd17d444879a46afc599402dd09686a605bea9e757135082/nestor_home-0.18.0-py3-none-any.whl", hash = "sha256:0fbc0fdf5fbfcd29220c51f2f958180c2a4ccdb284ff173fe26cc22993a9b292", size = 2529857, upload-time = "2026-11-27T16:18:38.226Z" },
 ]
 
 [package.optional-dependencies]
@@ -1348,7 +1348,7 @@ provides-extras = ["voice", "video", "opencv", "sounddevice", "qr"]
 dev = [
     { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "lefthook", specifier = "==2.2.4" },
-    { name = "nestor-home", extras = ["voice", "media"], specifier = "==0.17.0" },
+    { name = "nestor-home", extras = ["voice", "media"], specifier = "==0.18.0" },
     { name = "pytest", specifier = "==9.2.0" },
     { name = "pytest-asyncio", specifier = "==1.5.0" },
     { name = "pytest-cov", specifier = "==7.1.0" },
@@ -1611,7 +1611,7 @@ wheels = [
 
 [[package]]
 name = "pipecat-ai"
-version = "1.16.0"
+version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1635,9 +1635,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/be/37/f8349ba153e78aaf25ac7613ef59701acc8d9ecb7bdedd18654fadc69371/pipecat_ai-1.16.0.tar.gz", hash = "sha256:1598e0a3557ff38bdde93ba1e42a668708b911a5f1efa9960141b033963f51c5", size = 13704754, upload-time = "2026-11-12T00:44:49.747Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c4/c3/ff552e8a4f62f33dcccc8803462fa8e5460ad0c9589e68276e891a055316/pipecat_ai-1.17.0.tar.gz", hash = "sha256:33b4b2153cd46d88b8672069fe1605b295ccd9b50ad7f6586683f3b44f160125", size = 13898414, upload-time = "2026-11-22T23:54:32.881Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/71/67/01f9b6a635a5a517436cfdcb1f1e8fda4e0bc5dd00c111b27e19a757e604/pipecat_ai-1.16.0-py3-none-any.whl", hash = "sha256:613604ec4c6bb4301a26004e80011765c1a18d92394994097a65df07fbf1916d", size = 12374317, upload-time = "2026-11-12T00:44:46.908Z" },
+    { url = "https://files.pythonhosted.org/packages/67/9d/0d1c0bad8e1726cf76e4ef250954b5dea4a1c9fa7510e3330c1213996312/pipecat_ai-1.17.0-py3-none-any.whl", hash = "sha256:28dacb0729ceee4650d3d503ee1eb68bd15e01f861e3deae6f14a13d665a4200", size = 12555057, upload-time = "2026-11-22T23:54:30.291Z" },
 ]
 
 [package.optional-dependencies]
